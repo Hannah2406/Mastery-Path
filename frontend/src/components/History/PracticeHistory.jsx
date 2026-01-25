@@ -55,16 +55,25 @@ export default function PracticeHistory({ onClose }) {
 
   if (loading) {
     return (
-      <div className="bg-white rounded-lg shadow p-6">
-        <div className="text-center text-gray-500">Loading...</div>
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl mb-4 shadow-lg animate-pulse">
+            <span className="text-3xl">📊</span>
+          </div>
+          <div className="text-gray-600 font-medium">Loading history...</div>
+        </div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="bg-white rounded-lg shadow p-6">
-        <div className="text-center text-red-600">{error}</div>
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center max-w-md">
+          <div className="bg-red-50 border-l-4 border-red-500 text-red-700 p-6 rounded-lg shadow-sm">
+            <p className="font-semibold">{error}</p>
+          </div>
+        </div>
       </div>
     );
   }
@@ -72,83 +81,82 @@ export default function PracticeHistory({ onClose }) {
   const totalTimeMinutes = Math.round((stats?.totalTimeMs || 0) / 60000);
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-xl font-bold text-gray-800">Practice History</h2>
-        <button
-          onClick={onClose}
-          className="text-gray-500 hover:text-gray-700"
-        >
-          Back
-        </button>
+    <div className="space-y-8 max-w-6xl mx-auto">
+      <div className="text-center">
+        <h2 className="text-4xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent mb-2">
+          Practice History
+        </h2>
+        <p className="text-gray-600">Track your learning progress</p>
       </div>
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-lg shadow p-4">
-          <div className="text-2xl font-bold text-gray-800">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-4xl mx-auto">
+        <div className="glass-effect rounded-xl shadow-lg p-6 text-center border border-gray-100">
+          <div className="text-3xl font-bold text-gray-800 mb-1">
             {stats?.totalPractices || 0}
           </div>
-          <div className="text-sm text-gray-500">Total Practices</div>
+          <div className="text-sm text-gray-600 font-medium">Total Practices</div>
         </div>
-        <div className="bg-white rounded-lg shadow p-4">
-          <div className="text-2xl font-bold text-green-600">
+        <div className="glass-effect rounded-xl shadow-lg p-6 text-center border border-green-100 bg-gradient-to-br from-green-50 to-emerald-50">
+          <div className="text-3xl font-bold text-green-600 mb-1">
             {Math.round((stats?.successRate || 0) * 100)}%
           </div>
-          <div className="text-sm text-gray-500">Success Rate</div>
+          <div className="text-sm text-gray-600 font-medium">Success Rate</div>
         </div>
-        <div className="bg-white rounded-lg shadow p-4">
-          <div className="text-2xl font-bold text-blue-600">
+        <div className="glass-effect rounded-xl shadow-lg p-6 text-center border border-indigo-100 bg-gradient-to-br from-indigo-50 to-purple-50">
+          <div className="text-3xl font-bold text-indigo-600 mb-1">
             {stats?.masteredCount || 0}
           </div>
-          <div className="text-sm text-gray-500">Skills Mastered</div>
+          <div className="text-sm text-gray-600 font-medium">Skills Mastered</div>
         </div>
-        <div className="bg-white rounded-lg shadow p-4">
-          <div className="text-2xl font-bold text-gray-600">
+        <div className="glass-effect rounded-xl shadow-lg p-6 text-center border border-purple-100 bg-gradient-to-br from-purple-50 to-pink-50">
+          <div className="text-3xl font-bold text-purple-600 mb-1">
             {totalTimeMinutes}m
           </div>
-          <div className="text-sm text-gray-500">Total Time</div>
+          <div className="text-sm text-gray-600 font-medium">Total Time</div>
         </div>
       </div>
       {/* Recent Logs */}
-      <div className="bg-white rounded-lg shadow">
-        <div className="p-4 border-b">
-          <h3 className="font-medium text-gray-800">Recent Practice</h3>
+      <div className="glass-effect rounded-xl shadow-lg border border-gray-100">
+        <div className="p-6 border-b border-gray-200">
+          <h3 className="text-xl font-bold text-gray-800 text-center">Recent Practice</h3>
         </div>
         {logs.length === 0 ? (
-          <div className="p-8 text-center text-gray-500">
-            No practice sessions yet. Start practicing to see your history!
+          <div className="p-12 text-center">
+            <div className="text-5xl mb-4">📝</div>
+            <p className="text-gray-600 font-medium text-lg">No practice sessions yet</p>
+            <p className="text-gray-500 text-sm mt-2">Start practicing to see your history!</p>
           </div>
         ) : (
-          <div className="divide-y">
+          <div className="divide-y divide-gray-100">
             {logs.map((log) => (
-              <div key={log.id} className="p-4 flex items-center gap-4">
+              <div key={log.id} className="p-5 flex items-center gap-5 hover:bg-gray-50 transition-colors">
                 <div
-                  className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                  className={`w-12 h-12 rounded-xl flex items-center justify-center text-xl font-bold shadow-sm ${
                     log.success
-                      ? 'bg-green-100 text-green-600'
-                      : 'bg-red-100 text-red-600'
+                      ? 'bg-gradient-to-br from-green-100 to-emerald-100 text-green-700 border-2 border-green-200'
+                      : 'bg-gradient-to-br from-red-100 to-rose-100 text-red-700 border-2 border-red-200'
                   }`}
                 >
                   {log.success ? '✓' : '✗'}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="font-medium text-gray-800 truncate">
+                  <div className="font-bold text-gray-800 text-lg truncate mb-1">
                     {log.nodeName}
                   </div>
-                  <div className="text-sm text-gray-500">
-                    {log.categoryName}
+                  <div className="text-sm text-gray-600">
+                    <span className="font-medium">{log.categoryName}</span>
                     {!log.success && log.errorCode && (
-                      <span className="ml-2 text-red-500">
+                      <span className="ml-2 text-red-600 font-medium">
                         • {errorCodeLabels[log.errorCode] || log.errorCode}
                       </span>
                     )}
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="text-sm text-gray-600">
+                  <div className="text-base font-semibold text-gray-700 mb-1">
                     {formatDuration(log.durationMs)}
                   </div>
-                  <div className="text-xs text-gray-400">
+                  <div className="text-xs text-gray-500 font-medium">
                     {formatDate(log.occurredAt)}
                   </div>
                 </div>

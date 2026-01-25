@@ -131,7 +131,12 @@ export default function SkillTree({ pathId, onStartPractice }) {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
-        <div className="text-gray-600">Loading skill tree...</div>
+        <div className="text-center">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl mb-4 shadow-lg animate-pulse">
+            <span className="text-3xl">🌳</span>
+          </div>
+          <div className="text-gray-600 font-medium">Loading skill tree...</div>
+        </div>
       </div>
     );
   }
@@ -139,13 +144,18 @@ export default function SkillTree({ pathId, onStartPractice }) {
   if (error) {
     return (
       <div className="flex items-center justify-center h-96">
-        <div className="text-red-600">{error}</div>
+        <div className="text-center">
+          <div className="bg-red-50 border-l-4 border-red-500 text-red-700 p-6 rounded-lg shadow-sm max-w-md">
+            <p className="font-semibold">{error}</p>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="h-[600px] bg-gray-50 rounded-lg border">
+    <div className="w-full max-w-6xl mx-auto">
+      <div className="h-[600px] bg-gray-50 rounded-xl border-2 border-gray-200 shadow-lg overflow-hidden">
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -163,27 +173,28 @@ export default function SkillTree({ pathId, onStartPractice }) {
         <Background color="#e2e8f0" gap={20} />
         <Controls showInteractive={false} />
       </ReactFlow>
+      </div>
       <NodeDetailModal
         node={selectedNode}
         onClose={handleCloseModal}
         onStartPractice={handleStartPractice}
       />
-      <div className="flex justify-center gap-6 py-3 bg-white border-t">
-        <div className="flex items-center gap-2 text-sm">
-          <span className="w-3 h-3 rounded bg-gray-300"></span>
-          <span className="text-gray-600">Locked</span>
+      <div className="flex justify-center items-center gap-8 py-4 glass-effect border-t border-gray-200 rounded-b-xl">
+        <div className="flex items-center gap-2 text-sm font-medium">
+          <span className="w-4 h-4 rounded bg-gray-300 border border-gray-400"></span>
+          <span className="text-gray-700">Locked</span>
         </div>
-        <div className="flex items-center gap-2 text-sm">
-          <span className="w-3 h-3 rounded bg-blue-400"></span>
-          <span className="text-gray-600">Available</span>
+        <div className="flex items-center gap-2 text-sm font-medium">
+          <span className="w-4 h-4 rounded bg-blue-400 border border-blue-500"></span>
+          <span className="text-gray-700">Available</span>
         </div>
-        <div className="flex items-center gap-2 text-sm">
-          <span className="w-3 h-3 rounded bg-green-500"></span>
-          <span className="text-gray-600">Mastered</span>
+        <div className="flex items-center gap-2 text-sm font-medium">
+          <span className="w-4 h-4 rounded bg-green-500 border border-green-600"></span>
+          <span className="text-gray-700">Mastered</span>
         </div>
-        <div className="flex items-center gap-2 text-sm">
-          <span className="w-3 h-3 rounded bg-yellow-500"></span>
-          <span className="text-gray-600">Needs Review</span>
+        <div className="flex items-center gap-2 text-sm font-medium">
+          <span className="w-4 h-4 rounded bg-yellow-500 border border-yellow-600"></span>
+          <span className="text-gray-700">Needs Review</span>
         </div>
       </div>
     </div>

@@ -22,4 +22,12 @@ import java.util.List;
 
     @Query("SELECT pl FROM PerformanceLog pl WHERE pl.user.id = :userId ORDER BY pl.occurredAt DESC LIMIT :limit")
     List<PerformanceLog> findRecentByUserId(@Param("userId") Long userId, @Param("limit") int limit);
+
+    @Query(value = "SELECT DATE(occurred_at) as date, COUNT(*) as count " +
+           "FROM performance_log " +
+           "WHERE user_id = :userId " +
+           "AND occurred_at >= :since " +
+           "GROUP BY DATE(occurred_at) " +
+           "ORDER BY date ASC", nativeQuery = true)
+    List<Object[]> findDailyCountsByUserIdSince(@Param("userId") Long userId, @Param("since") java.time.LocalDate since);
 }

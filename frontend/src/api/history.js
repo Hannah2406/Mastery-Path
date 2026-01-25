@@ -36,6 +36,37 @@ export async function getStats() {
   }
 }
 
+export async function getHeatmap() {
+  try {
+    const url = `${API_BASE}/heatmap`;
+    console.log('Fetching heatmap from:', url);
+    const response = await fetch(url, {
+      credentials: 'include',
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      let error;
+      try {
+        error = JSON.parse(errorText);
+      } catch {
+        error = { error: errorText || 'Failed to fetch heatmap' };
+      }
+      throw new Error(error.error || `Server error: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    console.log('Heatmap data received:', data);
+    return data;
+  } catch (error) {
+    console.error('Heatmap fetch error:', error);
+    if (error.message.includes('fetch') || error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+      throw new Error(`Cannot connect to backend server at http://localhost:8080. Please make sure the backend is running.`);
+    }
+    throw error;
+  }
+}
+
 export async function getNodeLogs(nodeId) {
   try {
     const response = await fetch(`${API_BASE}/logs/node/${nodeId}`, {

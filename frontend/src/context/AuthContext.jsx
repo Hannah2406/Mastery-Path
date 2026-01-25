@@ -15,9 +15,14 @@ export function AuthProvider({ children }) {
   }, []);
 
   const login = async (email, password) => {
-    const user = await authApi.login(email, password);
-    setUser(user);
-    return user;
+    try {
+      const user = await authApi.login(email, password);
+      setUser(user);
+      return user;
+    } catch (error) {
+      console.error('Login error:', error);
+      throw error;
+    }
   };
 
   const register = async (email, password) => {

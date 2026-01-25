@@ -3,6 +3,7 @@ package com.masterypath.api.paths;
 import com.masterypath.api.paths.dto.*;
 import com.masterypath.domain.model.Node;
 import com.masterypath.domain.model.UserSkill;
+import com.masterypath.domain.repo.ProblemRepository;
 import com.masterypath.domain.service.PathService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
@@ -19,9 +20,11 @@ public class PathController {
     private static final String USER_ID_SESSION_KEY = "userId";
 
     private final PathService pathService;
+    private final ProblemRepository problemRepository;
 
-    public PathController(PathService pathService) {
+    public PathController(PathService pathService, ProblemRepository problemRepository) {
         this.pathService = pathService;
+        this.problemRepository = problemRepository;
     }
 
     @GetMapping public ResponseEntity<List<PathResponse>> getAllPaths() {
@@ -29,6 +32,15 @@ public class PathController {
             .map(PathResponse::from)
             .collect(Collectors.toList());
         return ResponseEntity.ok(paths);
+    }
+
+    @GetMapping("/nodes/{nodeId}/problems")
+    public ResponseEntity<?> getProblemsForNode(@PathVariable Long nodeId) {
+        List<ProblemResponse> problems = problemRepository.findByNodeIdOrderByDifficultyAsc(nodeId)
+            .stream()
+            .map(ProblemResponse::from)
+            .collect(Collectors.toList());
+        return ResponseEntity.ok(problems);
     }
 
     @GetMapping("/{pathId}")

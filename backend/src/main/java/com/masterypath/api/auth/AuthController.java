@@ -38,8 +38,7 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@Valid
-            @RequestBody LoginRequest request, HttpServletRequest httpRequest) {
+    public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request, HttpServletRequest httpRequest) {
         return authService.authenticate(request.getEmail(), request.getPassword())
             .<ResponseEntity<?>>map(user -> {
                 HttpSession session = httpRequest.getSession(true);
