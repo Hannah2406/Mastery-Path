@@ -1,26 +1,20 @@
 import { useState, useEffect } from 'react';
 import { getPaths } from '../../api/paths';
+import CreatePathModal from './CreatePathModal';
+import GenerateWithAIModal from './GenerateWithAIModal';
 
-const pathIcons = {
-  'Blind 75': '💻',
-  'AMC8': '🔢',
-};
+const pathIcons = { 'Blind 75': '💻', 'AMC8': '🔢' };
 
-const pathDescriptions = {
-  'Blind 75': {
-    subtitle: 'Coding Interview Prep',
-    details: '27 essential problems across 12 categories',
-  },
-  'AMC8': {
-    subtitle: 'Competition Math',
-    details: '59 concepts across 4 categories',
-  },
-};
-
-export default function PathSelector({ onSelectPath }) {
+export default function PathSelector({ onSelectPath, onShowMarketplace }) {
   const [paths, setPaths] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showAIModal, setShowAIModal] = useState(false);
+
+  const refreshPaths = () => {
+    getPaths().then(setPaths).catch((err) => setError(err.message));
+  };
 
   useEffect(() => {
     getPaths()
@@ -31,12 +25,10 @@ export default function PathSelector({ onSelectPath }) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center p-12">
+      <div className="flex justify-center p-12">
         <div className="text-center">
-          <div className="inline-flex items-center justify-center w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl mb-4 shadow-lg animate-pulse">
-            <span className="text-2xl">📚</span>
-          </div>
-          <div className="text-gray-600 font-medium">Loading paths...</div>
+          <div className="w-12 h-12 bg-slate-700 rounded-xl mb-4 animate-pulse mx-auto" />
+          <div className="text-slate-400">Loading paths...</div>
         </div>
       </div>
     );
@@ -44,56 +36,106 @@ export default function PathSelector({ onSelectPath }) {
 
   if (error) {
     return (
-      <div className="flex items-center justify-center p-12">
-        <div className="bg-red-50 border-l-4 border-red-500 text-red-700 p-6 rounded-lg shadow-sm max-w-md">
-          <p className="font-semibold">{error}</p>
+      <div className="flex justify-center p-12">
+        <div className="bg-red-900/30 border border-red-500/50 text-red-200 p-6 rounded-xl max-w-md">
+          <p className="font-medium">{error}</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-5xl mx-auto animate-fade-in">
-      <div className="text-center mb-12">
-        <h2 className="text-4xl font-bold text-gray-800 mb-3">
-          Choose Your Learning Path
-        </h2>
-        <p className="text-lg text-gray-600">
-          Select a path to start tracking your mastery journey
-        </p>
+    <div className="w-full max-w-3xl mx-auto animate-fade-in">
+      <div className="text-center mb-8">
+        <h2 className="text-3xl font-bold text-white mb-2">Choose Your Learning Path</h2>
+        <p className="text-slate-400">Select a path to start tracking your mastery</p>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {/* Make your own */}
+      <div className="mb-8 p-4 bg-slate-800/80 border border-slate-700 rounded-xl">
+        <h3 className="text-sm font-semibold text-slate-300 mb-3">Make your own path</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <button
+            type="button"
+            onClick={() => setShowCreateModal(true)}
+            className="group p-4 bg-slate-700/50 hover:bg-slate-700 border border-slate-600 rounded-xl text-left transition-all"
+          >
+            <span className="text-2xl mb-2 block">✏️</span>
+            <span className="font-medium text-white group-hover:text-indigo-300">From scratch</span>
+            <p className="text-slate-400 text-sm mt-0.5">Create a path with a name and description. Add skills later from the Map.</p>
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowAIModal(true)}
+            className="group p-4 bg-slate-700/50 hover:bg-slate-700 border border-slate-600 rounded-xl text-left transition-all"
+          >
+            <span className="text-2xl mb-2 block">✨</span>
+            <span className="font-medium text-white group-hover:text-indigo-300">Generate with AI</span>
+            <p className="text-slate-400 text-sm mt-0.5">AI will build a custom path from your goals. Coming soon.</p>
+          </button>
+        </div>
+      </div>
+
+      {onShowMarketplace && (
+        <button
+          type="button"
+          onClick={onShowMarketplace}
+          className="w-full mb-8 group bg-gradient-to-br from-indigo-900/60 to-slate-800/80 border border-indigo-500/40 hover:border-indigo-400/60 p-6 rounded-xl text-left transition-all hover:shadow-lg hover:shadow-indigo-500/15"
+        >
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 bg-indigo-600/80 group-hover:bg-indigo-500 rounded-xl flex items-center justify-center text-2xl transition-colors shrink-0">
+              🛒
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="text-lg font-bold text-white mb-0.5 group-hover:text-indigo-200 transition-colors">
+                Discover paths from the community
+              </h3>
+              <p className="text-slate-400 text-sm">
+                Browse, preview, and import learning paths shared by others — or publish your own.
+              </p>
+              <span className="inline-flex items-center gap-1.5 mt-2 text-indigo-400 text-sm font-medium">
+                Browse Marketplace
+                <span aria-hidden>→</span>
+              </span>
+            </div>
+          </div>
+        </button>
+      )}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 justify-items-center md:justify-items-stretch">
         {paths.map((path) => {
           const icon = pathIcons[path.name] || '📚';
-          const desc = pathDescriptions[path.name] || {
-            subtitle: path.description,
-            details: '',
-          };
           return (
             <button
               key={path.id}
               onClick={() => onSelectPath(path)}
-              className="group glass-effect p-8 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 text-left border-2 border-transparent hover:border-indigo-300 transform hover:-translate-y-1"
+              className="group bg-slate-800/80 border border-slate-700 hover:border-indigo-500/50 p-8 rounded-xl text-left transition-all hover:shadow-lg hover:shadow-indigo-500/10"
             >
-              <div className="flex items-start gap-5">
-                <div className="w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center text-3xl shadow-lg group-hover:scale-110 transition-transform duration-300">
+              <div className="flex items-start gap-4">
+                <div className="w-14 h-14 bg-slate-700 group-hover:bg-indigo-600 rounded-xl flex items-center justify-center text-2xl transition-colors">
                   {icon}
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-2xl font-bold text-gray-800 mb-2 group-hover:text-indigo-600 transition-colors">
+                  <h3 className="text-xl font-bold text-white mb-1 group-hover:text-indigo-300 transition-colors">
                     {path.name}
                   </h3>
-                  <p className="text-gray-600 font-medium mb-2">{desc.subtitle}</p>
-                  <p className="text-gray-500 text-sm">{desc.details}</p>
-                  <div className="mt-4 flex items-center text-indigo-600 font-semibold text-sm group-hover:translate-x-1 transition-transform">
-                    Start learning →
-                  </div>
+                  <p className="text-slate-400 text-sm">{path.description}</p>
+                  <div className="mt-3 text-indigo-400 text-sm font-medium">Start learning →</div>
                 </div>
               </div>
             </button>
           );
         })}
       </div>
+
+      {showCreateModal && (
+        <CreatePathModal
+          onClose={() => setShowCreateModal(false)}
+          onCreated={(path) => {
+            refreshPaths();
+            onSelectPath(path);
+          }}
+        />
+      )}
+      {showAIModal && <GenerateWithAIModal onClose={() => setShowAIModal(false)} />}
     </div>
   );
 }

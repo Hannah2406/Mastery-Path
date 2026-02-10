@@ -26,6 +26,9 @@ import java.util.List;
     }
     @Transactional public ProcessLogResult processLog(User user, Long nodeId, boolean isSuccess,                                        ErrorCode errorCode, Integer durationMs) {
         Node node = nodeRepository.findById(nodeId)            .orElseThrow(() -> new IllegalArgumentException("Node not found: " + nodeId));
+        if (!unlockEngine.canUserPractice(user, nodeId)) {
+            throw new IllegalArgumentException("Node is locked. Complete prerequisites first.");
+        }
         UserSkill skill = findOrCreateUserSkill(user, node);
         PerformanceLog log = createPerformanceLog(user, node, isSuccess, errorCode, durationMs, skill);
         applyDelta(skill, isSuccess, errorCode);
@@ -36,14 +39,12 @@ import java.util.List;
 
     }
     private UserSkill findOrCreateUserSkill(User user, Node node) {
-        return userSkillRepository.findByUserIdAndNodeId(user.getId(), node.getId())            .orElseGet(() -> {
-            UserSkill newSkill = new UserSkill(user, node);
-            newSkill.setNodeStatus(NodeStatus.AVAILABLE);
-            return newSkill;
-
-        }
-        );
-
+        return userSkillRepository.findByUserIdAndNodeId(user.getId(), node.getId())
+            .orElseGet(() -> {
+                UserSkill newSkill = new UserSkill(user, node);
+                // Leave as LOCKED; updateStatus will set to AVAILABLE after this practice
+                return newSkill;
+            });
     }
     private PerformanceLog createPerformanceLog(User user, Node node, boolean isSuccess,                                                 ErrorCode errorCode, Integer durationMs,                                                 UserSkill skill) {
         int attemptNumber = performanceLogRepository.countByUserIdAndNodeId(user.getId(), node.getId()) + 1;

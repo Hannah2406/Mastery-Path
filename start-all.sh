@@ -91,7 +91,7 @@ if check_port 8080; then
     sleep 2
 fi
 
-echo "Starting Spring Boot backend..."
+echo "Starting Spring Boot backend (PostgreSQL)..."
 mvn spring-boot:run -DskipTests > ../backend.log 2>&1 &
 BACKEND_PID=$!
 

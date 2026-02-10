@@ -1,12 +1,15 @@
 package com.masterypath.api.paths;
 
 import com.masterypath.api.paths.dto.*;
+import com.masterypath.domain.model.Path;
 import com.masterypath.domain.model.Node;
 import com.masterypath.domain.model.UserSkill;
 import com.masterypath.domain.repo.ProblemRepository;
 import com.masterypath.domain.service.PathService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
+import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -32,6 +35,12 @@ public class PathController {
             .map(PathResponse::from)
             .collect(Collectors.toList());
         return ResponseEntity.ok(paths);
+    }
+
+    @PostMapping
+    public ResponseEntity<?> createPath(@Valid @RequestBody CreatePathRequest request) {
+        Path path = pathService.createPath(request.getName(), request.getDescription());
+        return ResponseEntity.status(HttpStatus.CREATED).body(PathResponse.from(path));
     }
 
     @GetMapping("/nodes/{nodeId}/problems")
@@ -71,6 +80,18 @@ public class PathController {
         } catch (IllegalArgumentException e) {
             return ResponseEntity.notFound().build();
         }
+    }
+
+    @GetMapping("/{pathId}/stats")
+    public ResponseEntity<?> getPathStats(@PathVariable Long pathId, HttpServletRequest request) {
+        Long userId = getUserIdFromSession(request);
+        return pathService.getPathStats(pathId, userId)
+            .map(stats -> ResponseEntity.ok(new PathStatsResponse(
+                stats.totalNodes,
+                stats.masteredCount,
+                stats.reviewDueCount
+            )))
+            .orElse(ResponseEntity.notFound().build());
     }
 
     private Long getUserIdFromSession(HttpServletRequest request) {

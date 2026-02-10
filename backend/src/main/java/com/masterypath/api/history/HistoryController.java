@@ -1,5 +1,20 @@
 package com.masterypath.api.history;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.springframework.data.domain.PageRequest;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
 import com.masterypath.api.history.dto.HeatmapResponse;
 import com.masterypath.api.history.dto.PracticeLogResponse;
 import com.masterypath.api.history.dto.StatsResponse;
@@ -10,17 +25,9 @@ import com.masterypath.domain.model.enums.NodeStatus;
 import com.masterypath.domain.repo.PerformanceLogRepository;
 import com.masterypath.domain.repo.UserSkillRepository;
 import com.masterypath.domain.service.AuthService;
+
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/history")
@@ -48,7 +55,8 @@ public class HistoryController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                 .body(Map.of("error", "Not authenticated"));
         }
-        List<PerformanceLog> logs = performanceLogRepository.findRecentByUserId(user.getId(), limit);
+        List<PerformanceLog> logs = performanceLogRepository.findByUserIdOrderByOccurredAtDesc(
+            user.getId(), PageRequest.of(0, limit));
         List<PracticeLogResponse> response = logs.stream()
             .map(PracticeLogResponse::from)
             .toList();
@@ -96,12 +104,14 @@ public class HistoryController {
             .sum());
 
         // Skill stats
-        stats.setMasteredCount((int) skills.stream()
-            .filter(s -> s.getNodeStatus() == NodeStatus.MASTERED)
-            .count());
-        stats.setAvailableCount((int) skills.stream()
+        int mastered = (int) skills.stream().filter(s -> s.getNodeStatus() == NodeStatus.MASTERED).count();
+        int available = (int) skills.stream()
             .filter(s -> s.getNodeStatus() == NodeStatus.AVAILABLE || s.getNodeStatus() == NodeStatus.DECAYING)
-            .count());
+            .count();
+        int locked = (int) skills.stream().filter(s -> s.getNodeStatus() == NodeStatus.LOCKED).count();
+        stats.setMasteredCount(mastered);
+        stats.setAvailableCount(available);
+        stats.setLockedCount(locked);
 
         return ResponseEntity.ok(stats);
     }

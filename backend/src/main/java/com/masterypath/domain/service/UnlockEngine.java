@@ -16,6 +16,11 @@ import java.util.List;
         this.userSkillRepository = userSkillRepository;
 
     }
+    /** Returns true if the user is allowed to practice this node (entry node or all prerequisites mastered). */
+    public boolean canUserPractice(User user, Long nodeId) {
+        return allParentsMastered(user, nodeId);
+    }
+
     public List<Long> checkUnlocks(User user, Node completedNode) {
         List<Long> unlockedNodeIds = new ArrayList<>();
         List<Long> childNodeIds = nodePrerequisiteRepository.findDependentNodeIds(completedNode.getId());

@@ -1,6 +1,7 @@
 package com.masterypath.domain.repo;
 
 import com.masterypath.domain.model.PerformanceLog;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -20,8 +21,7 @@ import java.util.List;
 
     List<PerformanceLog> findByUserIdOrderByOccurredAtDesc(Long userId);
 
-    @Query("SELECT pl FROM PerformanceLog pl WHERE pl.user.id = :userId ORDER BY pl.occurredAt DESC LIMIT :limit")
-    List<PerformanceLog> findRecentByUserId(@Param("userId") Long userId, @Param("limit") int limit);
+    List<PerformanceLog> findByUserIdOrderByOccurredAtDesc(Long userId, Pageable pageable);
 
     @Query(value = "SELECT DATE(occurred_at) as date, COUNT(*) as count " +
            "FROM performance_log " +

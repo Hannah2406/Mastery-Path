@@ -33,7 +33,12 @@ backend.log
 *.class
 *.jar
 *.war
+backend/src/**/*.class
 
 # Temporary files
 /tmp/
 *.tmp
+
+# H2 file-based database (default profile)
+data/
+backend/data/

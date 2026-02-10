@@ -104,45 +104,41 @@ export default function PracticeSession({ node, onComplete, onCancel }) {
   const hasMultipleProblems = problems.length > 1;
 
   return (
-    <div className="glass-effect rounded-2xl shadow-2xl p-8 max-w-3xl mx-auto animate-fade-in">
+    <div className="bg-slate-800/80 border border-slate-700 rounded-2xl shadow-2xl p-8 w-full max-w-2xl mx-auto animate-fade-in">
       <div className="text-center mb-8">
-        <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl mb-4 shadow-lg">
-          <span className="text-4xl">💻</span>
+        <div className="inline-flex items-center justify-center w-16 h-16 bg-indigo-600 rounded-xl mb-4">
+          <span className="text-3xl">💻</span>
         </div>
-        <h2 className="text-3xl font-bold text-gray-800 mb-2">{node.name}</h2>
-        <p className="text-gray-600 font-medium">{node.category}</p>
-        <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-indigo-50 rounded-xl border border-indigo-200">
-          <span className="text-2xl font-mono font-bold text-indigo-600">{formatTime(elapsed)}</span>
-          <span className="text-sm text-indigo-500 font-medium">elapsed</span>
+        <h2 className="text-2xl font-bold text-white mb-2">{node.name}</h2>
+        <p className="text-slate-400 font-medium">{node.category}</p>
+        <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-slate-700 rounded-xl border border-slate-600">
+          <span className="text-xl font-mono font-bold text-white">{formatTime(elapsed)}</span>
+          <span className="text-sm text-slate-400">elapsed</span>
         </div>
       </div>
       {node.description && (
         <div className="text-center mb-6">
-          <p className="text-gray-700 text-lg leading-relaxed max-w-2xl mx-auto">{node.description}</p>
+          <p className="text-slate-300 text-lg leading-relaxed max-w-2xl mx-auto">{node.description}</p>
         </div>
       )}
       
       {loadingProblems ? (
         <div className="text-center py-8">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-          <p className="mt-4 text-gray-600">Loading problems...</p>
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-2 border-slate-600 border-t-indigo-500"></div>
+          <p className="mt-4 text-slate-400">Loading...</p>
         </div>
       ) : problems.length === 0 ? (
-        <div className="text-center py-8">
-          <p className="text-gray-600">No problems available for this topic yet.</p>
-          {/* Show LeetCode link for Blind 75 problems if no database problems */}
-          {node.externalUrl && node.externalUrl.includes('leetcode.com') && (
-            <div className="mt-6">
-              <a
-                href={node.externalUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:from-indigo-700 hover:to-purple-700 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all font-semibold"
-              >
-                Open on LeetCode
-                <span className="text-lg">↗</span>
-              </a>
-            </div>
+        <div className="text-center py-6">
+          <p className="text-slate-400 mb-4">Practice this skill and log your attempt below.</p>
+          {node.externalUrl && node.status !== 'LOCKED' && (
+            <a
+              href={node.externalUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-orange-600 hover:bg-orange-500 text-white rounded-xl font-medium transition-colors"
+            >
+              {node.externalUrl.includes('leetcode.com') ? 'Open on LeetCode ↗' : 'Open link ↗'}
+            </a>
           )}
         </div>
       ) : currentProblem ? (
@@ -154,39 +150,26 @@ export default function PracticeSession({ node, onComplete, onCancel }) {
               </span>
             </div>
           )}
-          <div className="bg-white rounded-xl p-6 border-2 border-gray-200 shadow-sm mb-4">
+          <div className="bg-slate-700/50 rounded-xl p-6 border border-slate-600 mb-4">
             <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-semibold text-gray-500 uppercase">
-                Difficulty: {'⭐'.repeat(currentProblem.difficulty)}
-              </span>
+              <span className="text-xs font-semibold text-slate-400 uppercase">Difficulty: {'⭐'.repeat(currentProblem.difficulty || 1)}</span>
             </div>
-            <p className="text-lg text-gray-800 leading-relaxed whitespace-pre-wrap">
-              {currentProblem.problemText}
-            </p>
+            <p className="text-lg text-slate-200 leading-relaxed whitespace-pre-wrap">{currentProblem.problemText}</p>
           </div>
-          
           {showSolution && currentProblem.solutionText && (
-            <div className="bg-green-50 rounded-xl p-6 border-2 border-green-200 shadow-sm mb-4">
-              <h4 className="font-bold text-green-800 mb-2">Solution:</h4>
-              <p className="text-gray-800 leading-relaxed whitespace-pre-wrap">
-                {currentProblem.solutionText}
-              </p>
+            <div className="bg-slate-700/30 rounded-xl p-6 border border-slate-600 mb-4">
+              <h4 className="font-bold text-emerald-400 mb-2">Solution:</h4>
+              <p className="text-slate-200 leading-relaxed whitespace-pre-wrap">{currentProblem.solutionText}</p>
             </div>
           )}
-          
-          {!showSolution && (
+          {!showSolution && currentProblem.solutionText && (
             <div className="text-center">
-              <button
-                onClick={() => setShowSolution(true)}
-                className="px-6 py-2 bg-blue-100 text-blue-700 rounded-xl hover:bg-blue-200 font-medium transition-colors"
-              >
-                Show Solution
-              </button>
+              <button onClick={() => setShowSolution(true)} className="px-6 py-2 bg-slate-700 text-slate-200 rounded-xl hover:bg-slate-600 font-medium transition-colors">Show Solution</button>
             </div>
           )}
           
-          {/* Show LeetCode link for Blind 75 problems */}
-          {node.externalUrl && node.externalUrl.includes('leetcode.com') && (
+          {/* Show external link only when skill is unlocked */}
+          {node.externalUrl && node.status !== 'LOCKED' && (
             <div className="text-center mt-4">
               <a
                 href={node.externalUrl}
@@ -195,100 +178,77 @@ export default function PracticeSession({ node, onComplete, onCancel }) {
                 className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl hover:from-orange-600 hover:to-orange-700 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all font-semibold text-sm"
               >
                 <span>🔗</span>
-                Open on LeetCode
+                {node.externalUrl.includes('leetcode.com') ? 'Open on LeetCode' : 'Open link'}
                 <span className="text-lg">↗</span>
               </a>
             </div>
           )}
         </div>
       ) : null}
-      <div className="border-t border-gray-200 pt-8">
-        {currentProblem && !showResult ? (
+      <div className="border-t border-slate-700 pt-8">
+        {(currentProblem || problems.length === 0) && !showResult ? (
           <div className="text-center">
-            <h3 className="text-2xl font-bold text-gray-800 mb-6">How did it go?</h3>
+            <h3 className="text-xl font-bold text-white mb-6">How did it go?</h3>
             <div className="flex gap-4 justify-center max-w-md mx-auto">
               <button
                 onClick={handleSuccess}
                 disabled={submitting}
-                className="flex-1 py-4 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl hover:from-green-700 hover:to-emerald-700 disabled:opacity-50 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all"
+                className="flex-1 py-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl disabled:opacity-50 font-semibold transition-colors"
               >
-                ✓ Solved it!
+                ✓ Success
               </button>
               <button
                 onClick={() => setShowResult(true)}
                 disabled={submitting}
-                className="flex-1 py-4 bg-red-100 text-red-700 rounded-xl hover:bg-red-200 disabled:opacity-50 font-semibold border-2 border-red-200 hover:border-red-300 transition-all"
+                className="flex-1 py-4 bg-slate-700 hover:bg-slate-600 text-red-300 border border-slate-600 rounded-xl disabled:opacity-50 font-semibold transition-colors"
               >
-                ✗ Didn't solve
+                ✗ Fail
               </button>
             </div>
             {hasMultipleProblems && currentProblemIndex < problems.length - 1 && (
-              <p className="mt-4 text-sm text-gray-500">
+              <p className="mt-4 text-sm text-slate-400">
                 {problems.length - currentProblemIndex - 1} more problem{problems.length - currentProblemIndex - 1 !== 1 ? 's' : ''} remaining
               </p>
             )}
           </div>
         ) : (
           <div className="max-w-2xl mx-auto">
-            <h3 className="text-2xl font-bold text-gray-800 mb-6 text-center">What happened?</h3>
+            <h3 className="text-xl font-bold text-white mb-6 text-center">What went wrong?</h3>
             <div className="space-y-3 mb-6">
               {errorTypes.map((err) => (
                 <label
                   key={err.code}
-                  className={`flex items-start gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                  className={`flex items-start gap-4 p-4 rounded-xl border cursor-pointer transition-all ${
                     selectedError === err.code
-                      ? 'border-red-500 bg-red-50 shadow-md'
-                      : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'
+                      ? 'border-red-500 bg-red-900/30'
+                      : 'border-slate-600 hover:border-slate-500 bg-slate-800/50'
                   }`}
                 >
-                  <input
-                    type="radio"
-                    name="errorType"
-                    value={err.code}
-                    checked={selectedError === err.code}
-                    onChange={() => setSelectedError(err.code)}
-                    className="mt-1 w-5 h-5"
-                  />
+                  <input type="radio" name="errorType" value={err.code} checked={selectedError === err.code} onChange={() => setSelectedError(err.code)} className="mt-1 w-5 h-5" />
                   <div className="flex-1">
-                    <div className="font-semibold text-gray-800 mb-1">{err.label}</div>
-                    <div className="text-sm text-gray-600">{err.description}</div>
+                    <div className="font-semibold text-white mb-1">{err.label}</div>
+                    <div className="text-sm text-slate-400">{err.description}</div>
                   </div>
                 </label>
               ))}
             </div>
             <div className="flex gap-4">
-              <button
-                onClick={() => {
-                  setShowResult(false);
-                  setSelectedError(null);
-                }}
-                className="flex-1 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 font-medium transition-colors"
-              >
-                Back
-              </button>
-              <button
-                onClick={handleFailure}
-                disabled={submitting || !selectedError}
-                className="flex-1 py-3 bg-gradient-to-r from-red-600 to-rose-600 text-white rounded-xl hover:from-red-700 hover:to-rose-700 disabled:opacity-50 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all"
-              >
-                Submit Result
-              </button>
+              <button onClick={() => { setShowResult(false); setSelectedError(null); }} className="flex-1 py-3 border border-slate-600 text-slate-300 rounded-xl hover:bg-slate-700 font-medium transition-colors">Back</button>
+              <button onClick={handleFailure} disabled={submitting || !selectedError} className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl disabled:opacity-50 font-semibold transition-colors">Log Attempt</button>
             </div>
+            <p className="mt-4 text-center text-slate-500 text-sm">You must log your attempt to track progress.</p>
           </div>
         )}
         {error && (
-          <div className="mt-6 p-4 bg-red-50 border-l-4 border-red-500 text-red-700 rounded-lg text-sm max-w-2xl mx-auto">
+          <div className="mt-6 p-4 bg-red-900/30 border border-red-500/50 text-red-200 rounded-lg text-sm max-w-2xl mx-auto">
             {error}
           </div>
         )}
-        <div className="text-center mt-6">
-          <button
-            onClick={onCancel}
-            className="text-gray-500 hover:text-gray-700 text-sm font-medium"
-          >
-            Cancel Practice
-          </button>
-        </div>
+        {!showResult && (
+          <div className="text-center mt-6">
+            <button onClick={onCancel} className="text-slate-400 hover:text-white text-sm font-medium">Cancel Practice</button>
+          </div>
+        )}
       </div>
     </div>
   );
