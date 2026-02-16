@@ -98,7 +98,7 @@ BACKEND_PID=$!
 echo "Waiting for backend to start..."
 for i in {1..60}; do
     if curl -s http://localhost:8080/api/v1/health > /dev/null 2>&1; then
-        echo -e "${GREEN}✅ Backend is running on http://localhost:8080${NC}"
+        echo -e "${GREEN}✅ Backend is running on http://localhost:8080 (PostgreSQL — data persists)${NC}"
         break
     fi
     if [ $i -eq 60 ]; then
@@ -151,9 +151,11 @@ echo -e "${GREEN}🎉 Everything is running!${NC}"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 echo -e "${BLUE}📍 Services:${NC}"
-echo "   🗄️  Database: localhost:5433"
+echo "   🗄️  Database: localhost:5433 (data persists across restarts)"
 echo "   ☕ Backend:   http://localhost:8080"
 echo "   ⚛️  Frontend:  $FRONTEND_URL"
+echo ""
+echo -e "${BLUE}📌 Data:${NC} Accounts, paths, and marketplace are stored in PostgreSQL and persist. See DATA.md."
 echo ""
 echo -e "${BLUE}📝 Logs:${NC}"
 echo "   Backend:  tail -f backend.log"

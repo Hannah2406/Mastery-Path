@@ -19,7 +19,7 @@ import java.util.List;
  */
 @Component
 @Order(1)
-@org.springframework.context.annotation.Profile("h2")
+@Profile("h2")
 public class SeedDataLoader implements ApplicationRunner {
 
     private static final Logger log = LoggerFactory.getLogger(SeedDataLoader.class);
@@ -96,10 +96,17 @@ public class SeedDataLoader implements ApplicationRunner {
         Node g1 = saveNode(geometry, "Basic Shapes", "Properties of triangles, rectangles, circles", "amc8-shapes", null);
         Node g2 = saveNode(geometry, "Perimeter & Area", "Calculating perimeter and area", "amc8-area", null);
 
-        // Paths
-        Path blind75 = new Path("Blind 75", "Master essential coding interview patterns");
+        // Get or create demo user for seed paths
+        User demoUser = userRepository.findByEmail(DEMO_USER_EMAIL)
+            .orElseGet(() -> {
+                User newUser = new User(DEMO_USER_EMAIL, DEMO_USER_PASSWORD_HASH);
+                return userRepository.save(newUser);
+            });
+
+        // Paths (owned by demo user)
+        Path blind75 = new Path(demoUser, "Blind 75", "Master essential coding interview patterns");
         blind75 = pathRepository.save(blind75);
-        Path amc8 = new Path("AMC8", "Competition math fundamentals for middle school");
+        Path amc8 = new Path(demoUser, "AMC8", "Competition math fundamentals for middle school");
         amc8 = pathRepository.save(amc8);
 
         // Blind 75 path nodes and prerequisites
@@ -160,8 +167,9 @@ public class SeedDataLoader implements ApplicationRunner {
             return;
         }
         log.info("Seeding marketplace with published paths...");
+        if (demoUser == null) return;
         for (String pathName : List.of("Blind 75", "AMC8")) {
-            pathRepository.findByName(pathName).ifPresent(path -> {
+            pathRepository.findByOwner_IdAndName(demoUser.getId(), pathName).ifPresent(path -> {
                 List<PathNode> pathNodes = pathNodeRepository.findByPathIdOrderBySequenceOrder(path.getId());
                 if (pathNodes.isEmpty()) return;
                 MarketplacePath mp = new MarketplacePath();

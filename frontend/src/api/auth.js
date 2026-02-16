@@ -52,9 +52,6 @@ export async function login(email, password) {
         error = { error: errorText || 'Login failed' };
       }
       const msg = error.error || 'Login failed';
-      if (response.status === 401 && msg.toLowerCase().includes('invalid')) {
-        throw new Error(msg + ' Register first if you just started the app (data resets when the backend restarts).');
-      }
       throw new Error(msg);
     }
     

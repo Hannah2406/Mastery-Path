@@ -30,29 +30,71 @@ import java.util.stream.Collectors;
         this.userSkillRepository = userSkillRepository;
     }
 
-    public List<Path> getAllPaths() {
-        return pathRepository.findAll();
+    public List<Path> getAllPaths(Long userId) {
+        if (userId == null) return List.of();
+        return pathRepository.findByOwner_IdOrderByNameAsc(userId);
     }
 
     @Transactional
-    public Path createPath(String name, String description) {
+    public Path createPath(User owner, String name, String description) {
+        if (owner == null) {
+            throw new IllegalArgumentException("Path owner is required");
+        }
         String baseName = name != null && !name.isBlank() ? name.trim() : "My Path";
         String pathName = baseName;
         int suffix = 1;
-        while (pathRepository.findByName(pathName).isPresent()) {
+        while (pathRepository.findByOwner_IdAndName(owner.getId(), pathName).isPresent()) {
             pathName = baseName + " (" + (++suffix) + ")";
         }
-        Path path = new Path(pathName, description != null ? description.trim() : null);
+        Path path = new Path(owner, pathName, description != null ? description.trim() : null);
         return pathRepository.save(path);
     }
 
-    public Optional<Path> getPathById(Long pathId) {
-        return pathRepository.findById(pathId);
+    /** Create starter paths for a new user (Blind 75 and AMC8 with basic nodes). */
+    @Transactional
+    public void createStarterPaths(User user) {
+        if (user == null) return;
+        // Check if user already has paths
+        if (!pathRepository.findByOwner_IdOrderByNameAsc(user.getId()).isEmpty()) {
+            return; // User already has paths, don't create duplicates
+        }
+
+        // Find nodes by external key (these should exist from seed data)
+        List<String> blind75Keys = List.of("lc-1", "lc-121", "lc-217", "lc-15", "lc-3", "lc-20", "lc-704", "lc-206", "lc-226", "lc-200", "lc-70", "lc-198");
+        List<String> amc8Keys = List.of("amc8-arith", "amc8-pemdas", "amc8-frac", "amc8-shapes", "amc8-area");
+
+        // Create Blind 75 path
+        Path blind75 = createPath(user, "Blind 75", "Master essential coding interview patterns");
+        int blind75Order = 0;
+        for (String key : blind75Keys) {
+            final int currentOrder = blind75Order;
+            nodeRepository.findByExternalKey(key).ifPresent(node -> {
+                pathNodeRepository.save(new PathNode(blind75.getId(), node.getId(), currentOrder));
+            });
+            blind75Order++;
+        }
+
+        // Create AMC8 path
+        Path amc8 = createPath(user, "AMC8", "Competition math fundamentals for middle school");
+        int amc8Order = 0;
+        for (String key : amc8Keys) {
+            final int currentOrder = amc8Order;
+            nodeRepository.findByExternalKey(key).ifPresent(node -> {
+                pathNodeRepository.save(new PathNode(amc8.getId(), node.getId(), currentOrder));
+            });
+            amc8Order++;
+        }
+    }
+
+    public Optional<Path> getPathById(Long pathId, Long userId) {
+        if (userId == null) return Optional.empty();
+        return pathRepository.findByIdAndOwner_Id(pathId, userId);
     }
 
     @Transactional(readOnly = true)
     public Optional<PathStats> getPathStats(Long pathId, Long userId) {
-        Path path = pathRepository.findById(pathId).orElse(null);
+        if (userId == null) return Optional.empty();
+        Path path = pathRepository.findByIdAndOwner_Id(pathId, userId).orElse(null);
         if (path == null) return Optional.empty();
         List<Long> nodeIds = pathNodeRepository.findNodeIdsByPathId(pathId);
         int totalNodes = nodeIds.size();
@@ -92,8 +134,11 @@ import java.util.stream.Collectors;
 
     @Transactional(readOnly = true)
     public TreeData getTreeForPath(Long pathId, Long userId) {
-        Path path = pathRepository.findById(pathId)
-            .orElseThrow(() -> new IllegalArgumentException("Path not found: " + pathId));
+        if (userId == null) {
+            throw new IllegalArgumentException("User must be authenticated to view path");
+        }
+        Path path = pathRepository.findByIdAndOwner_Id(pathId, userId)
+            .orElseThrow(() -> new IllegalArgumentException("Path not found or you don't have access: " + pathId));
         List<Long> nodeIds = pathNodeRepository.findNodeIdsByPathId(pathId);
         List<Node> nodes = nodeRepository.findAllById(nodeIds);
 

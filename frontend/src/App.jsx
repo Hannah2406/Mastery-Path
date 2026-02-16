@@ -22,6 +22,8 @@ function Dashboard() {
   const [selectedPath, setSelectedPath] = useState(null);
   const [practiceNode, setPracticeNode] = useState(null);
   const [practiceResult, setPracticeResult] = useState(null);
+  const [lastErrorType, setLastErrorType] = useState(null);
+  const [lastQuestion, setLastQuestion] = useState(null);
   const [treeKey, setTreeKey] = useState(0);
   const [activeTab, setActiveTab] = useState('map');
   const [showHistory, setShowHistory] = useState(false);
@@ -50,8 +52,10 @@ function Dashboard() {
     setPracticeResult(null);
   };
 
-  const handlePracticeComplete = (result) => {
+  const handlePracticeComplete = (result, errorType, question) => {
     setPracticeResult(result);
+    setLastErrorType(errorType);
+    setLastQuestion(question);
   };
 
   const handleClosePractice = () => {
@@ -185,6 +189,8 @@ function Dashboard() {
                 handleClosePractice();
                 setActiveTab('review');
               }}
+              lastErrorType={lastErrorType}
+              lastQuestion={lastQuestion}
             />
           ) : practiceNode ? (
             <PracticeSession

@@ -21,6 +21,7 @@ public class MarketplaceService {
     private final NodeRepository nodeRepository;
     private final NodePrerequisiteRepository nodePrerequisiteRepository;
     private final MarketplacePurchaseRepository marketplacePurchaseRepository;
+    private final UserRepository userRepository;
     private final AuthService authService;
 
     public MarketplaceService(MarketplacePathRepository marketplacePathRepository,
@@ -30,6 +31,7 @@ public class MarketplaceService {
                               NodeRepository nodeRepository,
                               NodePrerequisiteRepository nodePrerequisiteRepository,
                               MarketplacePurchaseRepository marketplacePurchaseRepository,
+                              UserRepository userRepository,
                               AuthService authService) {
         this.marketplacePathRepository = marketplacePathRepository;
         this.marketplacePathNodeRepository = marketplacePathNodeRepository;
@@ -38,6 +40,7 @@ public class MarketplaceService {
         this.nodeRepository = nodeRepository;
         this.nodePrerequisiteRepository = nodePrerequisiteRepository;
         this.marketplacePurchaseRepository = marketplacePurchaseRepository;
+        this.userRepository = userRepository;
         this.authService = authService;
     }
 
@@ -137,10 +140,33 @@ public class MarketplaceService {
         if (!mp.isPaid() || mp.getPriceCents() == null || mp.getPriceCents() <= 0) {
             throw new IllegalArgumentException("Path is not for sale");
         }
+        if (mp.getAuthor() != null && mp.getAuthor().getId().equals(user.getId())) {
+            throw new IllegalArgumentException("You are the author; you already own this path");
+        }
         if (marketplacePurchaseRepository.existsByUser_IdAndMarketplacePath_Id(user.getId(), marketplacePathId)) {
             throw new IllegalArgumentException("You already own this path");
         }
-        MarketplacePurchase purchase = new MarketplacePurchase(user, mp, mp.getPriceCents());
+        // Reload buyer and author with latest balances
+        User buyer = userRepository.findById(user.getId())
+            .orElseThrow(() -> new IllegalArgumentException("Buyer not found"));
+        int price = mp.getPriceCents();
+        int buyerBalance = buyer.getBalanceCents() != null ? buyer.getBalanceCents() : 0;
+        if (buyerBalance < price) {
+            throw new IllegalArgumentException("Not enough balance to purchase this path");
+        }
+        buyer.setBalanceCents(buyerBalance - price);
+        userRepository.save(buyer);
+
+        User author = mp.getAuthor();
+        if (author != null && !author.getId().equals(buyer.getId())) {
+            User authorEntity = userRepository.findById(author.getId())
+                .orElse(author);
+            int authorBalance = authorEntity.getBalanceCents() != null ? authorEntity.getBalanceCents() : 0;
+            authorEntity.setBalanceCents(authorBalance + price);
+            userRepository.save(authorEntity);
+        }
+
+        MarketplacePurchase purchase = new MarketplacePurchase(user, mp, price);
         return marketplacePurchaseRepository.save(purchase);
     }
 
@@ -149,7 +175,10 @@ public class MarketplaceService {
     public Path importPath(User user, Long marketplacePathId) {
         MarketplacePath mp = marketplacePathRepository.findById(marketplacePathId)
             .orElseThrow(() -> new IllegalArgumentException("Published path not found: " + marketplacePathId));
-        if (mp.isPaid() && !marketplacePurchaseRepository.existsByUser_IdAndMarketplacePath_Id(user.getId(), marketplacePathId)) {
+        boolean isAuthor = mp.getAuthor() != null && mp.getAuthor().getId().equals(user.getId());
+        if (mp.isPaid()
+            && !isAuthor
+            && !marketplacePurchaseRepository.existsByUser_IdAndMarketplacePath_Id(user.getId(), marketplacePathId)) {
             throw new IllegalArgumentException("You must purchase this path before importing");
         }
         List<MarketplacePathNode> nodes = marketplacePathNodeRepository.findByMarketplacePathIdOrderBySequenceOrder(marketplacePathId);
@@ -160,11 +189,11 @@ public class MarketplaceService {
         String baseName = "Copy of " + mp.getTitle();
         String pathName = baseName;
         int suffix = 1;
-        while (pathRepository.findByName(pathName).isPresent()) {
+        while (pathRepository.findByOwner_IdAndName(user.getId(), pathName).isPresent()) {
             pathName = baseName + " (" + (++suffix) + ")";
         }
 
-        Path newPath = new Path(pathName, mp.getDescription());
+        Path newPath = new Path(user, pathName, mp.getDescription());
         newPath = pathRepository.save(newPath);
 
         int order = 0;

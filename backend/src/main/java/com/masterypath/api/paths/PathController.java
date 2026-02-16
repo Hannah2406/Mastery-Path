@@ -3,8 +3,10 @@ package com.masterypath.api.paths;
 import com.masterypath.api.paths.dto.*;
 import com.masterypath.domain.model.Path;
 import com.masterypath.domain.model.Node;
+import com.masterypath.domain.model.User;
 import com.masterypath.domain.model.UserSkill;
 import com.masterypath.domain.repo.ProblemRepository;
+import com.masterypath.domain.service.AuthService;
 import com.masterypath.domain.service.PathService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
@@ -24,22 +26,32 @@ public class PathController {
 
     private final PathService pathService;
     private final ProblemRepository problemRepository;
+    private final AuthService authService;
 
-    public PathController(PathService pathService, ProblemRepository problemRepository) {
+    public PathController(PathService pathService, ProblemRepository problemRepository, AuthService authService) {
         this.pathService = pathService;
         this.problemRepository = problemRepository;
+        this.authService = authService;
     }
 
-    @GetMapping public ResponseEntity<List<PathResponse>> getAllPaths() {
-        List<PathResponse> paths = pathService.getAllPaths().stream()
+    @GetMapping public ResponseEntity<?> getAllPaths(HttpServletRequest request) {
+        Long userId = getUserIdFromSession(request);
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Not authenticated"));
+        }
+        List<PathResponse> paths = pathService.getAllPaths(userId).stream()
             .map(PathResponse::from)
             .collect(Collectors.toList());
         return ResponseEntity.ok(paths);
     }
 
     @PostMapping
-    public ResponseEntity<?> createPath(@Valid @RequestBody CreatePathRequest request) {
-        Path path = pathService.createPath(request.getName(), request.getDescription());
+    public ResponseEntity<?> createPath(@Valid @RequestBody CreatePathRequest request, HttpServletRequest httpRequest) {
+        User user = getCurrentUser(httpRequest);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Not authenticated"));
+        }
+        Path path = pathService.createPath(user, request.getName(), request.getDescription());
         return ResponseEntity.status(HttpStatus.CREATED).body(PathResponse.from(path));
     }
 
@@ -53,8 +65,12 @@ public class PathController {
     }
 
     @GetMapping("/{pathId}")
-    public ResponseEntity<?> getPath(@PathVariable Long pathId) {
-        return pathService.getPathById(pathId)
+    public ResponseEntity<?> getPath(@PathVariable Long pathId, HttpServletRequest request) {
+        Long userId = getUserIdFromSession(request);
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Not authenticated"));
+        }
+        return pathService.getPathById(pathId, userId)
             .<ResponseEntity<?>>map(path -> ResponseEntity.ok(PathResponse.from(path)))
             .orElseGet(() -> ResponseEntity.notFound().build());
     }
@@ -100,5 +116,11 @@ public class PathController {
             return null;
         }
         return (Long) session.getAttribute(USER_ID_SESSION_KEY);
+    }
+
+    private User getCurrentUser(HttpServletRequest request) {
+        Long userId = getUserIdFromSession(request);
+        if (userId == null) return null;
+        return authService.findById(userId).orElse(null);
     }
 }

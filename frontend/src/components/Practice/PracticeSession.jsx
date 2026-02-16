@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { createLog } from '../../api/logs';
 import { getProblemsForNode } from '../../api/problems';
+import { generateQuestions } from '../../api/ai';
+import FileUploadModal from './FileUploadModal';
 
 const errorTypes = [
   { code: 'EXECUTION', label: 'Execution error', description: 'Typo, off-by-one, syntax error' },
@@ -9,6 +11,8 @@ const errorTypes = [
 ];
 
 export default function PracticeSession({ node, onComplete, onCancel }) {
+  const [lastErrorType, setLastErrorType] = useState(null);
+  const [lastQuestion, setLastQuestion] = useState(null);
   const [startTime] = useState(Date.now());
   const [elapsed, setElapsed] = useState(0);
   const [showResult, setShowResult] = useState(false);
@@ -19,6 +23,8 @@ export default function PracticeSession({ node, onComplete, onCancel }) {
   const [currentProblemIndex, setCurrentProblemIndex] = useState(0);
   const [loadingProblems, setLoadingProblems] = useState(true);
   const [showSolution, setShowSolution] = useState(false);
+  const [generatingQuestions, setGeneratingQuestions] = useState(false);
+  const [showFileUpload, setShowFileUpload] = useState(false);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -64,7 +70,7 @@ export default function PracticeSession({ node, onComplete, onCancel }) {
         setSubmitting(false);
       } else {
         // All problems done
-        onComplete(result);
+        onComplete(result, null, null);
       }
     } catch (err) {
       setError(err.message);
@@ -83,6 +89,10 @@ export default function PracticeSession({ node, onComplete, onCancel }) {
       const durationMs = Date.now() - startTime;
       const result = await createLog(node.id, false, selectedError, durationMs);
       
+      // Store error info for similar question generation
+      setLastErrorType(selectedError);
+      setLastQuestion(currentProblem?.problemText || node.name);
+      
       // If there are more problems, move to next one
       if (currentProblemIndex < problems.length - 1) {
         setCurrentProblemIndex(currentProblemIndex + 1);
@@ -92,7 +102,7 @@ export default function PracticeSession({ node, onComplete, onCancel }) {
         setSubmitting(false);
       } else {
         // All problems done
-        onComplete(result);
+        onComplete(result, selectedError, currentProblem?.problemText || node.name);
       }
     } catch (err) {
       setError(err.message);
@@ -167,6 +177,33 @@ export default function PracticeSession({ node, onComplete, onCancel }) {
               <button onClick={() => setShowSolution(true)} className="px-6 py-2 bg-slate-700 text-slate-200 rounded-xl hover:bg-slate-600 font-medium transition-colors">Show Solution</button>
             </div>
           )}
+          <div className="text-center mt-4">
+            <button
+              onClick={async () => {
+                setGeneratingQuestions(true);
+                try {
+                  const result = await generateQuestions(node.name, 'intermediate', 3);
+                  if (result.questions && result.questions.length > 0) {
+                    // Add generated questions to the problems list
+                    const newProblems = result.questions.map(q => ({
+                      problemText: q.problemText,
+                      solutionText: q.solutionText,
+                      difficulty: q.difficulty || 2
+                    }));
+                    setProblems([...problems, ...newProblems]);
+                  }
+                } catch (err) {
+                  setError('Failed to generate questions: ' + err.message);
+                } finally {
+                  setGeneratingQuestions(false);
+                }
+              }}
+              disabled={generatingQuestions}
+              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-600 disabled:cursor-not-allowed text-white rounded-xl font-medium transition-colors text-sm"
+            >
+              {generatingQuestions ? 'Generating...' : '✨ Generate More Questions'}
+            </button>
+          </div>
           
           {/* Show external link only when skill is unlocked */}
           {node.externalUrl && node.status !== 'LOCKED' && (
@@ -245,11 +282,23 @@ export default function PracticeSession({ node, onComplete, onCancel }) {
           </div>
         )}
         {!showResult && (
-          <div className="text-center mt-6">
+          <div className="text-center mt-6 space-y-2">
+            <button onClick={() => setShowFileUpload(true)} className="text-indigo-400 hover:text-indigo-300 text-sm font-medium">📄 Upload Test Paper</button>
+            <div className="text-slate-500 text-xs">or</div>
             <button onClick={onCancel} className="text-slate-400 hover:text-white text-sm font-medium">Cancel Practice</button>
           </div>
         )}
       </div>
+      {showFileUpload && (
+        <FileUploadModal
+          onClose={() => setShowFileUpload(false)}
+          onTextExtracted={(text) => {
+            // Could create a problem from extracted text
+            console.log('Extracted text:', text);
+            setShowFileUpload(false);
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -19,6 +19,9 @@ public class User {
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
+    @Column(name = "balance_cents", nullable = false)
+    private Integer balanceCents = 0;
+
     public User() {}
 
     public User(String email, String passwordHash) {
@@ -57,5 +60,13 @@ public class User {
 
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public Integer getBalanceCents() {
+        return balanceCents;
+    }
+
+    public void setBalanceCents(Integer balanceCents) {
+        this.balanceCents = balanceCents;
     }
 }

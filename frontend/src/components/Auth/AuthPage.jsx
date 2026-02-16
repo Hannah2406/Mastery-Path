@@ -21,7 +21,7 @@ export default function AuthPage() {
             </p>
             {isLogin && (
               <p className="text-slate-500 text-xs mt-1">
-                Just started the app? Register first — the in-memory DB resets when the backend restarts.
+                New here? Create an account to get started.
               </p>
             )}
           </div>

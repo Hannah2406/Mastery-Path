@@ -70,7 +70,7 @@ export default function PathSelector({ onSelectPath, onShowMarketplace }) {
           >
             <span className="text-2xl mb-2 block">✨</span>
             <span className="font-medium text-white group-hover:text-indigo-300">Generate with AI</span>
-            <p className="text-slate-400 text-sm mt-0.5">AI will build a custom path from your goals. Coming soon.</p>
+            <p className="text-slate-400 text-sm mt-0.5">AI will build a custom path from your goals.</p>
           </button>
         </div>
       </div>
@@ -135,7 +135,16 @@ export default function PathSelector({ onSelectPath, onShowMarketplace }) {
           }}
         />
       )}
-      {showAIModal && <GenerateWithAIModal onClose={() => setShowAIModal(false)} />}
+      {showAIModal && (
+        <GenerateWithAIModal 
+          onClose={() => setShowAIModal(false)} 
+          onPathCreated={(path) => {
+            setShowAIModal(false);
+            refreshPaths();
+            onSelectPath(path);
+          }}
+        />
+      )}
     </div>
   );
 }

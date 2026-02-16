@@ -5,7 +5,7 @@
 Run this single command:
 
 ```bash
-./start-everything.sh
+./start-all.sh
 ```
 
 This script will:

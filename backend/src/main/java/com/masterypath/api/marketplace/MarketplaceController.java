@@ -155,7 +155,9 @@ public class MarketplaceController {
         r.setNodeCount(nodeIds.size());
         r.setNodeIds(nodeIds);
         if (currentUser != null && mp.isPaid()) {
-            r.setHasPurchased(marketplaceService.hasPurchased(currentUser, mp.getId()));
+            boolean isAuthor = mp.getAuthor() != null && mp.getAuthor().getId().equals(currentUser.getId());
+            boolean hasPurchased = isAuthor || marketplaceService.hasPurchased(currentUser, mp.getId());
+            r.setHasPurchased(hasPurchased);
         }
         return r;
     }

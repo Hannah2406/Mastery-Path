@@ -3,13 +3,19 @@ package com.masterypath.domain.model;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "path")
+@Table(name = "path", uniqueConstraints = {
+    @UniqueConstraint(columnNames = {"user_id", "name"})
+})
 public class Path {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true)
+    @ManyToOne(optional = false)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User owner;
+
+    @Column(nullable = false)
     private String name;
 
     private String description;
@@ -17,6 +23,12 @@ public class Path {
     public Path() {}
 
     public Path(String name, String description) {
+        this.name = name;
+        this.description = description;
+    }
+
+    public Path(User owner, String name, String description) {
+        this.owner = owner;
         this.name = name;
         this.description = description;
     }
@@ -43,5 +55,13 @@ public class Path {
 
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    public User getOwner() {
+        return owner;
+    }
+
+    public void setOwner(User owner) {
+        this.owner = owner;
     }
 }

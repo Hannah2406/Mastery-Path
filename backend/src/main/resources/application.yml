@@ -1,5 +1,9 @@
-# MasteryPath: default is PostgreSQL so all instances share the same data.
-# Every computer/server that connects to this DB sees the same users, paths, and marketplace.
+# ═══════════════════════════════════════════════════════════════════════════════
+# DEFAULT = PostgreSQL. DATA PERSISTS across restarts, replays, and computers.
+# Start DB first:  docker compose up -d
+# Then start backend:  mvn spring-boot:run   (do NOT use -Dspring-boot.run.profiles=h2)
+# Or use:  ./start-all.sh   (starts DB + backend + frontend)
+# ═══════════════════════════════════════════════════════════════════════════════
 # Override with env: SPRING_DATASOURCE_URL, SPRING_DATASOURCE_USERNAME, SPRING_DATASOURCE_PASSWORD
 spring:
   application:
@@ -20,6 +24,7 @@ spring:
   flyway:
     enabled: true
     locations: classpath:db/migration
+    out-of-order: true
   session:
     store-type: jdbc
     jdbc:
@@ -34,8 +39,14 @@ management:
       exposure:
         include: health,info
 
+# AI Configuration
+ai:
+  enabled: true
+  openai:
+    api-key: ${OPENAI_API_KEY:}
+
 ---
-# Optional: H2 file-based DB (profile "h2") - only for local dev without Docker
+# H2 profile: TEMPORARY only. Data can be lost. For persistent data use DEFAULT (PostgreSQL) and ./start-all.sh.
 spring:
   config:
     activate:
