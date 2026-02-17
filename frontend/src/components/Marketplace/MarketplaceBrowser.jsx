@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { getMarketplacePaths, getMarketplaceTree, importPath, purchasePath } from '../../api/marketplace';
+import { getMarketplacePaths, getMarketplaceTree, importPath, purchasePath, generateAICourse } from '../../api/marketplace';
 import { getPaths } from '../../api/paths';
 import MarketplaceTreePreview from './MarketplaceTreePreview';
 
@@ -52,6 +52,12 @@ export default function MarketplaceBrowser({ onClose, onImportPath, onMakeYourOw
   const [purchasingId, setPurchasingId] = useState(null);
   const [checkoutItem, setCheckoutItem] = useState(null);
   const [purchaseSuccess, setPurchaseSuccess] = useState(null);
+  const [showAIGenerate, setShowAIGenerate] = useState(false);
+  const [generatingAI, setGeneratingAI] = useState(false);
+  const [aiTopic, setAiTopic] = useState('');
+  const [aiDescription, setAiDescription] = useState('');
+  const [aiDifficulty, setAiDifficulty] = useState('intermediate');
+  const [aiTimeMinutes, setAiTimeMinutes] = useState(600);
 
   useEffect(() => {
     const t = setTimeout(() => setSearchDebounced(searchQuery), 300);
@@ -98,6 +104,33 @@ export default function MarketplaceBrowser({ onClose, onImportPath, onMakeYourOw
     if (!purchaseSuccess?.id) return;
     await handleImport(purchaseSuccess.id);
     setPurchaseSuccess(null);
+  };
+
+  const handleGenerateAICourse = async () => {
+    if (!aiTopic.trim()) {
+      setError('Topic is required');
+      return;
+    }
+    setGeneratingAI(true);
+    setError('');
+    try {
+      const result = await generateAICourse({
+        topic: aiTopic,
+        description: aiDescription || undefined,
+        difficulty: aiDifficulty || undefined,
+        estimatedTimeMinutes: aiTimeMinutes || undefined,
+        priceCents: 0,
+        isPaid: false,
+      });
+      setShowAIGenerate(false);
+      setAiTopic('');
+      setAiDescription('');
+      fetchPaths();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setGeneratingAI(false);
+    }
   };
 
   const handleImport = async (id) => {
@@ -162,22 +195,39 @@ export default function MarketplaceBrowser({ onClose, onImportPath, onMakeYourOw
         <h2 className="text-2xl font-bold text-white">Marketplace</h2>
       </div>
 
-      {/* Make your own */}
-      {(onMakeYourOwn || onClose) && (
-        <div className="mb-6 p-4 bg-slate-800/80 border border-slate-700 rounded-xl flex flex-wrap items-center justify-between gap-4">
+      {/* Make your own + AI Generate */}
+      <div className="mb-6 flex flex-wrap gap-4">
+        {(onMakeYourOwn || onClose) && (
+          <div className="flex-1 min-w-[300px] p-4 bg-slate-800/80 border border-slate-700 rounded-xl flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <h3 className="text-white font-semibold mb-0.5">Make your own</h3>
+              <p className="text-slate-400 text-sm">Publish a path from your library to the marketplace.</p>
+            </div>
+            <button
+              onClick={onMakeYourOwn ?? onClose}
+              className="shrink-0 inline-flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-medium text-sm transition-colors"
+            >
+              Go to my paths
+              <span aria-hidden>→</span>
+            </button>
+          </div>
+        )}
+        <div className="flex-1 min-w-[300px] p-4 bg-gradient-to-r from-purple-800/80 to-indigo-800/80 border border-purple-700 rounded-xl flex flex-wrap items-center justify-between gap-4">
           <div>
-            <h3 className="text-white font-semibold mb-0.5">Make your own</h3>
-            <p className="text-slate-400 text-sm">Publish a path from your library to the marketplace. Select a path, then use Publish to Marketplace.</p>
+            <h3 className="text-white font-semibold mb-0.5 flex items-center gap-2">
+              <span>✨</span> Generate AI Course
+            </h3>
+            <p className="text-slate-300 text-sm">Let AI create a complete learning course for the marketplace.</p>
           </div>
           <button
-            onClick={onMakeYourOwn ?? onClose}
-            className="shrink-0 inline-flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-medium text-sm transition-colors"
+            onClick={() => setShowAIGenerate(true)}
+            className="shrink-0 inline-flex items-center gap-2 px-4 py-2.5 bg-purple-600 hover:bg-purple-500 text-white rounded-xl font-medium text-sm transition-colors"
           >
-            Go to my paths
-            <span aria-hidden>→</span>
+            Generate Course
+            <span aria-hidden>✨</span>
           </button>
         </div>
-      )}
+      </div>
 
       <div className="flex flex-wrap items-center gap-3 mb-4">
         <input
@@ -439,6 +489,100 @@ export default function MarketplaceBrowser({ onClose, onImportPath, onMakeYourOw
           purchasingId={purchasingId}
           formatPrice={formatPrice}
         />
+      )}
+
+      {/* AI Generate Modal */}
+      {showAIGenerate && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <div className="bg-slate-800 border border-slate-700 rounded-2xl p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto">
+            <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+              <span>✨</span> Generate AI Course
+            </h3>
+            {error && (
+              <div className="mb-4 bg-red-900/40 border border-red-500/50 text-red-200 p-3 rounded-lg text-sm">
+                {error}
+              </div>
+            )}
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-1">Topic *</label>
+                <input
+                  type="text"
+                  value={aiTopic}
+                  onChange={(e) => setAiTopic(e.target.value)}
+                  placeholder="e.g., Machine Learning Basics, React Hooks, Python Data Science"
+                  className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-1">Description (optional)</label>
+                <textarea
+                  value={aiDescription}
+                  onChange={(e) => setAiDescription(e.target.value)}
+                  placeholder="What should students learn? What level is this for?"
+                  rows={3}
+                  className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-1">Difficulty</label>
+                  <select
+                    value={aiDifficulty}
+                    onChange={(e) => setAiDifficulty(e.target.value)}
+                    className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white"
+                  >
+                    <option value="beginner">Beginner</option>
+                    <option value="intermediate">Intermediate</option>
+                    <option value="advanced">Advanced</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-1">Time (minutes)</label>
+                  <input
+                    type="number"
+                    value={aiTimeMinutes}
+                    onChange={(e) => setAiTimeMinutes(parseInt(e.target.value) || 600)}
+                    min={60}
+                    step={60}
+                    className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white"
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => {
+                  setShowAIGenerate(false);
+                  setError('');
+                  setAiTopic('');
+                  setAiDescription('');
+                }}
+                disabled={generatingAI}
+                className="flex-1 px-4 py-2.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-medium disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleGenerateAICourse}
+                disabled={generatingAI || !aiTopic.trim()}
+                className="flex-1 px-4 py-2.5 bg-purple-600 hover:bg-purple-500 text-white rounded-lg font-medium disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {generatingAI ? (
+                  <>
+                    <span className="animate-spin">⏳</span>
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <span>✨</span>
+                    Generate & Publish
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -15,5 +15,6 @@ import java.util.Optional;
 
     List<Node> findByCategoryId(Long categoryId);
 
+    Optional<Node> findByCategory_IdAndName(Long categoryId, String name);
 }
 

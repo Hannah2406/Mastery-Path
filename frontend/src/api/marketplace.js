@@ -70,3 +70,15 @@ export async function importPath(id) {
   if (!response.ok) throw new Error(data?.error || 'Failed to import');
   return data;
 }
+
+export async function generateAICourse(body) {
+  const response = await fetch(`${API_BASE}/generate-ai-course`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify(body),
+  });
+  const data = await parseJson(response, {});
+  if (!response.ok) throw new Error(data?.error || 'Failed to generate AI course');
+  return data;
+}

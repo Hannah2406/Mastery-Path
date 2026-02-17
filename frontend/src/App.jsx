@@ -5,6 +5,7 @@ import PathSelector from './components/PathSelector/PathSelector';
 import SkillTree from './components/SkillTree/SkillTree';
 import PracticeSession from './components/Practice/PracticeSession';
 import PracticeResult from './components/Practice/PracticeResult';
+import PracticeErrorBoundary from './components/Practice/PracticeErrorBoundary';
 import PracticeHistory from './components/History/PracticeHistory';
 import ProfileModal from './components/Profile/ProfileModal';
 import ConnectionStatus from './components/ConnectionStatus';
@@ -48,7 +49,24 @@ function Dashboard() {
   }, [treeKey]);
 
   const handleStartPractice = (node) => {
-    setPracticeNode(node);
+    // Normalize: tree may pass API node or React Flow node (payload in .data)
+    const payload = node?.data ?? node;
+    if (!payload) {
+      setPracticeNode(node);
+      setPracticeResult(null);
+      return;
+    }
+    const numId = payload.id != null ? Number(payload.id) : undefined;
+    const normalized = {
+      id: numId != null && !Number.isNaN(numId) ? numId : undefined,
+      name: payload.name ?? 'Practice',
+      category: payload.category ?? '',
+      description: payload.description ?? '',
+      status: payload.status,
+      externalUrl: payload.externalUrl,
+      masteryScore: payload.masteryScore,
+    };
+    setPracticeNode(normalized);
     setPracticeResult(null);
   };
 
@@ -193,11 +211,13 @@ function Dashboard() {
               lastQuestion={lastQuestion}
             />
           ) : practiceNode ? (
-            <PracticeSession
-              node={practiceNode}
-              onComplete={handlePracticeComplete}
-              onCancel={handleClosePractice}
-            />
+            <PracticeErrorBoundary onClose={handleClosePractice}>
+              <PracticeSession
+                node={practiceNode}
+                onComplete={handlePracticeComplete}
+                onCancel={handleClosePractice}
+              />
+            </PracticeErrorBoundary>
           ) : showMarketplace ? (
             <MarketplaceBrowser
               onClose={() => setShowMarketplace(false)}

@@ -91,6 +91,13 @@ if check_port 8080; then
     sleep 2
 fi
 
+# Load .env so backend gets GEMINI_API_KEY / OPENAI_API_KEY
+if [ -f ../.env ]; then
+  set -a
+  . ../.env
+  set +a
+  echo "Loaded .env for backend"
+fi
 echo "Starting Spring Boot backend (PostgreSQL)..."
 mvn spring-boot:run -DskipTests > ../backend.log 2>&1 &
 BACKEND_PID=$!

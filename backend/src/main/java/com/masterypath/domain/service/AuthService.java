@@ -32,8 +32,10 @@ import java.util.Optional;
     }
 
     public Optional<User> authenticate(String email, String password) {
-        if (email == null || email.trim().isEmpty()) return Optional.empty();
-        return userRepository.findByEmailIgnoreCase(email.trim())
+        if (email == null || password == null) return Optional.empty();
+        String normalized = email.trim().toLowerCase();
+        if (normalized.isEmpty()) return Optional.empty();
+        return userRepository.findByEmailIgnoreCase(normalized)
             .filter(user -> passwordEncoder.matches(password, user.getPasswordHash()));
     }
 

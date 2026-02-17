@@ -69,6 +69,9 @@ export default function LoginForm({ onSwitchToRegister }) {
           Register
         </button>
       </p>
+      <p className="mt-2 text-center text-xs text-slate-500">
+        Demo: demo@masterypath.app / demo
+      </p>
     </div>
   );
 }

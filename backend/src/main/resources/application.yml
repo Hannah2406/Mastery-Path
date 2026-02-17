@@ -39,11 +39,18 @@ management:
       exposure:
         include: health,info
 
-# AI Configuration
+# AI: use Gemini (free with Pro) or OpenAI. If GEMINI_API_KEY is set, Gemini is used for text AI.
+# Get Gemini key: https://aistudio.google.com/app/apikey
 ai:
   enabled: true
   openai:
     api-key: ${OPENAI_API_KEY:}
+    base-url: ${OPENAI_API_BASE:https://api.openai.com}
+    model: ${OPENAI_MODEL:gpt-4o-mini}
+  gemini:
+    api-key: ${GEMINI_API_KEY:}
+    # Free tier: Gemini 2.5 Flash has 5 RPM, 250K TPM, 20 RPD. Override with GEMINI_MODEL if needed.
+    model: ${GEMINI_MODEL:gemini-2.5-flash}
 
 ---
 # H2 profile: TEMPORARY only. Data can be lost. For persistent data use DEFAULT (PostgreSQL) and ./start-all.sh.

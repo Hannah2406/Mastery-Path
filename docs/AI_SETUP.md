@@ -1,4 +1,18 @@
-# AI features setup (Generate path, Generate questions)
+# AI API setup (Generate path, Generate questions)
+
+## Quick connect
+
+1. Get an API key from [OpenAI](https://platform.openai.com/api-keys) (or use any OpenAI-compatible provider).
+2. Set it when starting the app:
+   ```bash
+   export OPENAI_API_KEY=sk-your-key-here
+   ./start-all.sh
+   ```
+   Or: `export OPENAI_API_KEY=sk-...` then `cd backend && mvn spring-boot:run`
+3. Restart the backend after changing the key.
+
+Optional: set `OPENAI_API_BASE` to use another endpoint (e.g. Azure, Groq):  
+`export OPENAI_API_BASE=https://api.groq.com/openai/v1`
 
 ## Which AI is used?
 

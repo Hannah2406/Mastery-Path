@@ -1,5 +1,6 @@
 package com.masterypath.api.ai;
 
+import com.masterypath.api.ai.dto.CheckAnswerRequest;
 import com.masterypath.api.ai.dto.*;
 import com.masterypath.domain.model.User;
 import com.masterypath.domain.service.AIService;
@@ -13,6 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -153,6 +155,73 @@ public class AIController {
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(Map.of("error", "Failed to extract text: " + e.getMessage()));
+        }
+    }
+    
+    @PostMapping(value = "/mark-drawing", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> markDrawing(@RequestParam("image") MultipartFile image,
+                                        @RequestParam(value = "question", required = false) String question,
+                                        HttpServletRequest httpRequest) {
+        User user = getCurrentUser(httpRequest);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(Map.of("error", "Not authenticated"));
+        }
+        
+        if (image.isEmpty()) {
+            return ResponseEntity.badRequest()
+                .body(Map.of("error", "Image is empty"));
+        }
+        
+        try {
+            AIService.MarkingResult result = aiService.markDrawing(image.getBytes(), question);
+            Map<String, Object> response = new HashMap<>();
+            response.put("score", result.getScore());
+            response.put("feedback", result.getFeedback());
+            response.put("extractedText", result.getExtractedText());
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of("error", "Failed to mark drawing: " + e.getMessage()));
+        }
+    }
+    
+    @PostMapping("/check-answer")
+    public ResponseEntity<?> checkAnswer(@RequestBody CheckAnswerRequest request,
+                                        HttpServletRequest httpRequest) {
+        User user = getCurrentUser(httpRequest);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(Map.of("error", "Not authenticated"));
+        }
+        try {
+            AIService.CheckAnswerResult result = aiService.checkAnswer(
+                request.getQuestion(), request.getAnswer());
+            Map<String, Object> response = new HashMap<>();
+            response.put("correct", result.isCorrect());
+            response.put("score", result.getScore());
+            response.put("feedback", result.getFeedback());
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of("error", "Failed to check answer: " + e.getMessage()));
+        }
+    }
+    
+    @PostMapping("/live-feedback")
+    public ResponseEntity<?> liveFeedback(@RequestBody CheckAnswerRequest request,
+                                         HttpServletRequest httpRequest) {
+        User user = getCurrentUser(httpRequest);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(Map.of("error", "Not authenticated"));
+        }
+        try {
+            String feedback = aiService.getLiveFeedback(request.getQuestion(), request.getAnswer());
+            return ResponseEntity.ok(Map.of("feedback", feedback));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of("error", "Failed to get feedback: " + e.getMessage()));
         }
     }
     

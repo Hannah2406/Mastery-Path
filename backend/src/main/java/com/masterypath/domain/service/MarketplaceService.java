@@ -2,6 +2,7 @@ package com.masterypath.domain.service;
 
 import com.masterypath.domain.model.*;
 import com.masterypath.domain.repo.*;
+import com.masterypath.domain.service.AIService.PathNodeSuggestion;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,6 +24,8 @@ public class MarketplaceService {
     private final MarketplacePurchaseRepository marketplacePurchaseRepository;
     private final UserRepository userRepository;
     private final AuthService authService;
+    private final AIService aiService;
+    private final CategoryRepository categoryRepository;
 
     public MarketplaceService(MarketplacePathRepository marketplacePathRepository,
                               MarketplacePathNodeRepository marketplacePathNodeRepository,
@@ -32,7 +35,9 @@ public class MarketplaceService {
                               NodePrerequisiteRepository nodePrerequisiteRepository,
                               MarketplacePurchaseRepository marketplacePurchaseRepository,
                               UserRepository userRepository,
-                              AuthService authService) {
+                              AuthService authService,
+                              AIService aiService,
+                              CategoryRepository categoryRepository) {
         this.marketplacePathRepository = marketplacePathRepository;
         this.marketplacePathNodeRepository = marketplacePathNodeRepository;
         this.pathRepository = pathRepository;
@@ -42,6 +47,8 @@ public class MarketplaceService {
         this.marketplacePurchaseRepository = marketplacePurchaseRepository;
         this.userRepository = userRepository;
         this.authService = authService;
+        this.aiService = aiService;
+        this.categoryRepository = categoryRepository;
     }
 
     /** Tree preview for marketplace path (read-only: nodes + edges, no user progress). */
@@ -205,5 +212,61 @@ public class MarketplaceService {
         marketplacePathRepository.save(mp);
 
         return newPath;
+    }
+
+    /** Generate and publish an AI-created course to the marketplace. */
+    @Transactional
+    public MarketplacePath generateAndPublishAICourse(User author, String topic, String description,
+                                                       String difficulty, Integer estimatedTimeMinutes,
+                                                       List<String> tags, Integer priceCents, boolean isPaid) {
+        // Use AI to generate course structure
+        List<PathNodeSuggestion> suggestions = aiService.generatePath(
+            description != null && !description.isBlank() ? description : topic,
+            difficulty != null ? difficulty : "intermediate",
+            estimatedTimeMinutes != null ? estimatedTimeMinutes : 600
+        );
+
+        if (suggestions.isEmpty()) {
+            throw new IllegalArgumentException("AI failed to generate course structure");
+        }
+
+        // Create or find categories and nodes
+        Path tempPath = new Path(author, "Temp AI Path", description);
+        tempPath = pathRepository.save(tempPath);
+
+        int order = 0;
+        for (PathNodeSuggestion suggestion : suggestions) {
+            // Find or create category
+            Category category = categoryRepository.findByName(suggestion.getCategory())
+                .orElseGet(() -> categoryRepository.save(new Category(suggestion.getCategory(), 0.03)));
+
+            // Create node if it doesn't exist (by name match in category)
+            Node node = nodeRepository.findByCategory_IdAndName(category.getId(), suggestion.getName())
+                .orElseGet(() -> {
+                    Node newNode = new Node(category, suggestion.getName(), 
+                        suggestion.getDescription() != null ? suggestion.getDescription() : "", 
+                        null, null);
+                    return nodeRepository.save(newNode);
+                });
+
+            pathNodeRepository.save(new PathNode(tempPath.getId(), node.getId(), order++));
+        }
+
+        // Generate title and description if not provided
+        String title = topic != null && !topic.isBlank() ? topic : "AI Generated Course";
+        String finalDescription = description != null && !description.isBlank() 
+            ? description 
+            : "An AI-generated learning path covering: " + String.join(", ", 
+                suggestions.stream().map(PathNodeSuggestion::getName).limit(5).toList());
+
+        // Publish to marketplace
+        MarketplacePath mp = publishPath(author, tempPath.getId(), title, finalDescription,
+            difficulty != null ? difficulty : "intermediate", estimatedTimeMinutes, tags, priceCents, isPaid);
+
+        // Clean up temp path (marketplace path is a frozen snapshot)
+        pathNodeRepository.deleteAll(pathNodeRepository.findByPathIdOrderBySequenceOrder(tempPath.getId()));
+        pathRepository.delete(tempPath);
+
+        return mp;
     }
 }

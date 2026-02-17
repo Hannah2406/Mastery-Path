@@ -1,5 +1,6 @@
 package com.masterypath.api.marketplace;
 
+import com.masterypath.api.marketplace.dto.GenerateAICourseRequest;
 import com.masterypath.api.marketplace.dto.ImportPathResponse;
 import com.masterypath.api.marketplace.dto.MarketplacePathResponse;
 import com.masterypath.api.marketplace.dto.PublishPathRequest;
@@ -37,6 +38,34 @@ public class MarketplaceController {
         this.marketplaceService = marketplaceService;
         this.marketplacePathNodeRepository = marketplacePathNodeRepository;
         this.authService = authService;
+    }
+
+    @PostMapping("/generate-ai-course")
+    public ResponseEntity<?> generateAICourse(@Valid @RequestBody GenerateAICourseRequest request,
+                                               HttpServletRequest httpRequest) {
+        User user = getCurrentUser(httpRequest);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(Map.of("error", "Not authenticated"));
+        }
+        try {
+            MarketplacePath mp = marketplaceService.generateAndPublishAICourse(
+                user,
+                request.getTopic(),
+                request.getDescription(),
+                request.getDifficulty(),
+                request.getEstimatedTimeMinutes(),
+                request.getTags(),
+                request.getPriceCents(),
+                request.getIsPaid() != null && request.getIsPaid()
+            );
+            return ResponseEntity.status(HttpStatus.CREATED).body(toResponse(mp, user));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of("error", "Failed to generate AI course: " + e.getMessage()));
+        }
     }
 
     @PostMapping("/publish")

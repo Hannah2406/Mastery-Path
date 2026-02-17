@@ -33,8 +33,10 @@ export async function generateQuestions(topic, difficulty, count = 5) {
     body: JSON.stringify({ topic, difficulty, count }),
   });
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Failed to generate questions');
+    let data = {};
+    try { data = await response.json(); } catch { /* non-JSON */ }
+    const msg = data.error || 'Failed to generate questions';
+    throw new Error(friendlyAiError(response.status, msg) || msg);
   }
   return response.json();
 }
@@ -47,8 +49,10 @@ export async function generateSimilarQuestions(originalQuestion, topic, errorTyp
     body: JSON.stringify({ originalQuestion, topic, errorType }),
   });
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Failed to generate similar questions');
+    let data = {};
+    try { data = await response.json(); } catch { /* non-JSON */ }
+    const msg = data.error || 'Failed to generate similar questions';
+    throw new Error(friendlyAiError(response.status, msg) || msg);
   }
   return response.json();
 }
@@ -65,6 +69,73 @@ export async function extractTextFromFile(file) {
   if (!response.ok) {
     const error = await response.json();
     throw new Error(error.error || 'Failed to extract text');
+  }
+  return response.json();
+}
+
+export async function markDrawing(question, imageBlob) {
+  const formData = new FormData();
+  formData.append('image', imageBlob, 'drawing.png');
+  formData.append('question', question || '');
+  
+  const response = await fetch(`${API_BASE}/ai/mark-drawing`, {
+    method: 'POST',
+    credentials: 'include',
+    body: formData,
+  });
+  if (!response.ok) {
+    let error = {};
+    try { error = await response.json(); } catch { /* non-JSON */ }
+    const msg = error.error || 'Failed to mark drawing';
+    throw new Error(friendlyAiError(response.status, msg) || msg);
+  }
+  return response.json();
+}
+
+function friendlyAiError(status, message) {
+  if (status === 429) return 'AI rate limit reached. Please wait a minute and try again.';
+  const m = (message || '').toLowerCase();
+  if (m.includes('quota') || m.includes('rate limit') || m.includes('resource_exhausted')) {
+    return 'AI rate limit reached. Please wait a minute and try again.';
+  }
+  return null;
+}
+
+/** Submit mode: check answer only when user presses Submit. */
+export async function checkAnswer(question, answer) {
+  const response = await fetch(`${API_BASE}/ai/check-answer`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ question: question || '', answer: answer || '' }),
+  });
+  if (!response.ok) {
+    let data;
+    try {
+      data = await response.json();
+    } catch {
+      data = {};
+    }
+    const msg = data.error || 'Failed to check answer';
+    const friendly = friendlyAiError(response.status, msg);
+    throw new Error(friendly || msg);
+  }
+  return response.json();
+}
+
+/** Learning mode: get live advice as the user types (call debounced). */
+export async function getLiveFeedback(question, answer) {
+  const response = await fetch(`${API_BASE}/ai/live-feedback`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ question: question || '', answer: answer || '' }),
+  });
+  if (!response.ok) {
+    let data = {};
+    try { data = await response.json(); } catch { /* non-JSON */ }
+    const msg = data.error || 'Failed to get feedback';
+    throw new Error(friendlyAiError(response.status, msg) || msg);
   }
   return response.json();
 }
