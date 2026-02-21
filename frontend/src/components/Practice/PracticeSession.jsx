@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { createLog } from '../../api/logs';
 import { getProblemsForNode } from '../../api/problems';
+import { getNodeLogs } from '../../api/history';
 import { generateQuestions, generateSimilarQuestions, checkAnswer, getLiveFeedback } from '../../api/ai';
 import FileUploadModal from './FileUploadModal';
 import DrawingCanvas from './DrawingCanvas';
@@ -66,14 +67,17 @@ export default function PracticeSession({ node, onComplete, onCancel }) {
     }
     setLoadingProblems(true);
     setError('');
-    getProblemsForNode(nodeId)
-      .then(probs => {
-        setProblems(Array.isArray(probs) ? probs : []);
+    Promise.all([getProblemsForNode(nodeId), getNodeLogs(nodeId).catch(() => [])])
+      .then(([probs, logs]) => {
+        const list = Array.isArray(probs) ? probs : [];
+        setProblems(list);
+        const successCount = Array.isArray(logs) ? logs.filter((l) => l.success).length : 0;
+        const startIndex = list.length === 0 ? 0 : Math.min(successCount, list.length - 1);
+        setCurrentProblemIndex(startIndex);
         setLoadingProblems(false);
       })
       .catch(err => {
         console.error('Failed to load problems:', err);
-        console.error('Error details:', err.message);
         setError(`Failed to load problems: ${err.message}`);
         setProblems([]);
         setLoadingProblems(false);
