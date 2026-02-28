@@ -18,20 +18,20 @@ const PRICE_FILTERS = [
 
 function CardSkeleton() {
   return (
-    <div className="bg-slate-800/80 border border-slate-700 rounded-2xl p-6 flex flex-col animate-pulse">
+    <div className="bg-[#FFFFFF] border border-[#E9E7F5] rounded-2xl p-6 flex flex-col animate-pulse shadow-sm shadow-[#7C5CFF]/5">
       <div className="flex justify-between gap-2 mb-3">
-        <div className="h-6 bg-slate-700 rounded w-3/4" />
-        <div className="h-6 w-14 bg-slate-700 rounded-lg" />
+        <div className="h-6 bg-[#E9E7F5] rounded w-3/4" />
+        <div className="h-6 w-14 bg-[#E9E7F5] rounded-lg" />
       </div>
-      <div className="h-4 bg-slate-700 rounded w-full mb-2" />
-      <div className="h-4 bg-slate-700 rounded w-2/3 mb-4" />
+      <div className="h-4 bg-[#E9E7F5] rounded w-full mb-2" />
+      <div className="h-4 bg-[#E9E7F5] rounded w-2/3 mb-4" />
       <div className="flex gap-2 mb-4">
-        <div className="h-6 w-20 bg-slate-700 rounded-lg" />
-        <div className="h-6 w-16 bg-slate-700 rounded-lg" />
+        <div className="h-6 w-20 bg-[#E9E7F5] rounded-lg" />
+        <div className="h-6 w-16 bg-[#E9E7F5] rounded-lg" />
       </div>
       <div className="flex gap-2 mt-auto">
-        <div className="h-10 flex-1 bg-slate-700 rounded-lg" />
-        <div className="h-10 flex-1 bg-slate-700 rounded-lg" />
+        <div className="h-10 flex-1 bg-[#E9E7F5] rounded-lg" />
+        <div className="h-10 flex-1 bg-[#E9E7F5] rounded-lg" />
       </div>
     </div>
   );
@@ -187,41 +187,41 @@ export default function MarketplaceBrowser({ onClose, onImportPath, onMakeYourOw
       <div className="flex items-center justify-between gap-4 mb-6 flex-wrap">
         <button
           onClick={onClose}
-          className="inline-flex items-center gap-2 px-4 py-2.5 bg-slate-700 hover:bg-slate-600 border border-slate-600 rounded-xl text-white font-medium text-sm transition-colors"
+          className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#FFFFFF] hover:bg-[#F5F4FF] border border-[#E9E7F5] rounded-xl text-[#1F2937] font-bold text-base transition-colors shadow-sm"
         >
           <span aria-hidden>←</span>
           Back to my paths
         </button>
-        <h2 className="text-2xl font-bold text-white">Marketplace</h2>
+        <h2 className="text-2xl sm:text-3xl font-extrabold text-[#1F2937] tracking-tight">Marketplace</h2>
       </div>
 
       {/* Make your own + AI Generate */}
       <div className="mb-6 flex flex-wrap gap-4">
         {(onMakeYourOwn || onClose) && (
-          <div className="flex-1 min-w-[300px] p-4 bg-slate-800/80 border border-slate-700 rounded-xl flex flex-wrap items-center justify-between gap-4">
+          <div className="flex-1 min-w-[300px] p-5 bg-[#FAFAFF] border border-[#E9E7F5] rounded-2xl flex flex-wrap items-center justify-between gap-4 shadow-sm shadow-[#7C5CFF]/5">
             <div>
-              <h3 className="text-white font-semibold mb-0.5">Make your own</h3>
-              <p className="text-slate-400 text-sm">Publish a path from your library to the marketplace.</p>
+              <h3 className="text-[#1F2937] font-bold text-lg mb-0.5">Make your own</h3>
+              <p className="text-[#6B7280] text-base font-medium">Publish a path from your library to the marketplace.</p>
             </div>
             <button
               onClick={onMakeYourOwn ?? onClose}
-              className="shrink-0 inline-flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-medium text-sm transition-colors"
+              className="shrink-0 inline-flex items-center gap-2 px-5 py-2.5 bg-[#7C5CFF] hover:bg-[#6B4CE6] text-white rounded-xl font-bold text-base transition-colors shadow-md shadow-[#7C5CFF]/20"
             >
               Go to my paths
               <span aria-hidden>→</span>
             </button>
           </div>
         )}
-        <div className="flex-1 min-w-[300px] p-4 bg-gradient-to-r from-purple-800/80 to-indigo-800/80 border border-purple-700 rounded-xl flex flex-wrap items-center justify-between gap-4">
+        <div className="flex-1 min-w-[300px] p-5 bg-gradient-to-r from-[#F5F4FF] to-[#E8E4FF] border border-[#7C5CFF]/30 rounded-2xl flex flex-wrap items-center justify-between gap-4 shadow-sm shadow-[#7C5CFF]/10">
           <div>
-            <h3 className="text-white font-semibold mb-0.5 flex items-center gap-2">
+            <h3 className="text-[#1F2937] font-bold text-lg mb-0.5 flex items-center gap-2">
               <span>✨</span> Generate AI Course
             </h3>
-            <p className="text-slate-300 text-sm">Let AI create a complete learning course for the marketplace.</p>
+            <p className="text-[#6B7280] text-base font-medium">Let AI create a complete learning course for the marketplace.</p>
           </div>
           <button
             onClick={() => setShowAIGenerate(true)}
-            className="shrink-0 inline-flex items-center gap-2 px-4 py-2.5 bg-purple-600 hover:bg-purple-500 text-white rounded-xl font-medium text-sm transition-colors"
+            className="shrink-0 inline-flex items-center gap-2 px-5 py-2.5 bg-[#7C5CFF] hover:bg-[#6B4CE6] text-white rounded-xl font-bold text-base transition-colors shadow-md shadow-[#7C5CFF]/20"
           >
             Generate Course
             <span aria-hidden>✨</span>
@@ -235,12 +235,12 @@ export default function MarketplaceBrowser({ onClose, onImportPath, onMakeYourOw
           placeholder="Search by title, description, or tags..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="flex-1 min-w-[200px] bg-slate-700 border border-slate-600 rounded-lg px-4 py-2 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className="flex-1 min-w-[200px] bg-[#FFFFFF] border border-[#E9E7F5] rounded-xl px-4 py-2.5 text-[#1F2937] placeholder-[#6B7280] focus:outline-none focus:ring-2 focus:ring-[#7C5CFF]/40 focus:border-[#7C5CFF]/50 font-medium"
         />
         <select
           value={priceFilter}
           onChange={(e) => setPriceFilter(e.target.value)}
-          className="bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white"
+          className="bg-[#FFFFFF] border border-[#E9E7F5] rounded-xl px-4 py-2.5 text-base font-bold text-[#1F2937] focus:ring-2 focus:ring-[#7C5CFF]/40"
         >
           {PRICE_FILTERS.map((f) => (
             <option key={f.value || 'all'} value={f.value}>{f.label}</option>
@@ -251,12 +251,12 @@ export default function MarketplaceBrowser({ onClose, onImportPath, onMakeYourOw
           placeholder="Tag"
           value={tag}
           onChange={(e) => setTag(e.target.value)}
-          className="bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-500 w-28"
+          className="bg-[#FFFFFF] border border-[#E9E7F5] rounded-xl px-4 py-2.5 text-base font-medium text-[#1F2937] placeholder-[#6B7280] w-28 focus:ring-2 focus:ring-[#7C5CFF]/40"
         />
         <select
           value={difficulty}
           onChange={(e) => setDifficulty(e.target.value)}
-          className="bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white"
+          className="bg-[#FFFFFF] border border-[#E9E7F5] rounded-xl px-4 py-2.5 text-base font-bold text-[#1F2937] focus:ring-2 focus:ring-[#7C5CFF]/40"
         >
           <option value="">All levels</option>
           <option value="beginner">Beginner</option>
@@ -266,7 +266,7 @@ export default function MarketplaceBrowser({ onClose, onImportPath, onMakeYourOw
         <select
           value={sort}
           onChange={(e) => setSort(e.target.value)}
-          className="bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white"
+          className="bg-[#FFFFFF] border border-[#E9E7F5] rounded-xl px-4 py-2.5 text-base font-bold text-[#1F2937] focus:ring-2 focus:ring-[#7C5CFF]/40"
         >
           {SORT_OPTIONS.map((o) => (
             <option key={o.value} value={o.value}>{o.label}</option>
@@ -276,7 +276,7 @@ export default function MarketplaceBrowser({ onClose, onImportPath, onMakeYourOw
           <button
             type="button"
             onClick={clearFilters}
-            className="px-3 py-2 text-sm text-slate-400 hover:text-white border border-slate-600 rounded-lg hover:bg-slate-700 transition-colors"
+            className="px-4 py-2.5 text-base font-bold text-[#6B7280] hover:text-[#1F2937] border border-[#E9E7F5] rounded-xl hover:bg-[#FAFAFF] transition-colors"
           >
             Clear filters
           </button>
@@ -284,9 +284,9 @@ export default function MarketplaceBrowser({ onClose, onImportPath, onMakeYourOw
       </div>
 
       {error && (
-        <div className="mb-4 p-4 bg-red-900/30 border border-red-500/50 text-red-200 rounded-xl text-sm flex items-center justify-between gap-4 flex-wrap">
+        <div className="mb-4 p-4 bg-[#FEE2E2] border border-[#EF4444]/30 text-[#B91C1C] rounded-xl text-base font-semibold flex items-center justify-between gap-4 flex-wrap">
           <span>{error}</span>
-          <button onClick={fetchPaths} className="px-3 py-1.5 bg-red-800/50 hover:bg-red-700 rounded-lg text-sm font-medium whitespace-nowrap">
+          <button onClick={fetchPaths} className="px-4 py-2 bg-[#EF4444]/20 hover:bg-[#EF4444]/30 rounded-xl font-bold whitespace-nowrap">
             Retry
           </button>
         </div>
@@ -297,11 +297,11 @@ export default function MarketplaceBrowser({ onClose, onImportPath, onMakeYourOw
           {[1, 2, 3, 4, 5, 6].map((i) => <CardSkeleton key={i} />)}
         </div>
       ) : filteredPaths.length === 0 ? (
-        <div className="text-center py-16 bg-slate-800/50 rounded-xl border border-slate-700">
-          <p className="text-slate-400 font-medium">No paths match your filters.</p>
-          <p className="text-slate-500 text-sm mt-1 mb-4">Try different search terms or clear filters to see all paths.</p>
+        <div className="text-center py-16 bg-[#FAFAFF] rounded-2xl border border-[#E9E7F5]">
+          <p className="text-[#1F2937] font-bold text-lg">No paths match your filters.</p>
+          <p className="text-[#6B7280] text-base font-medium mt-1 mb-4">Try different search terms or clear filters to see all paths.</p>
           {hasActiveFilters && (
-            <button onClick={clearFilters} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-medium">
+            <button onClick={clearFilters} className="px-5 py-2.5 bg-[#7C5CFF] hover:bg-[#6B4CE6] text-white rounded-xl font-bold text-base">
               Clear filters
             </button>
           )}
@@ -309,8 +309,8 @@ export default function MarketplaceBrowser({ onClose, onImportPath, onMakeYourOw
       ) : (
         <>
           <div className="flex items-center justify-between gap-4 mb-3 flex-wrap">
-            <p className="text-slate-400 text-sm">
-              Showing <span className="text-white font-medium">{filteredPaths.length}</span> path{filteredPaths.length !== 1 ? 's' : ''}
+            <p className="text-[#6B7280] text-base font-bold">
+              Showing <span className="text-[#1F2937]">{filteredPaths.length}</span> path{filteredPaths.length !== 1 ? 's' : ''}
             </p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -319,28 +319,28 @@ export default function MarketplaceBrowser({ onClose, onImportPath, onMakeYourOw
               return (
                 <div
                   key={p.id}
-                  className="group bg-gradient-to-br from-slate-800/90 to-slate-800/70 border border-slate-700 hover:border-indigo-500/50 rounded-2xl p-6 flex flex-col transition-all hover:shadow-xl hover:shadow-indigo-500/10"
+                  className="group bg-[#FFFFFF] border border-[#E9E7F5] hover:border-[#7C5CFF]/40 rounded-2xl p-6 flex flex-col transition-all hover:shadow-xl shadow-sm shadow-[#7C5CFF]/5 hover:shadow-[#7C5CFF]/15"
                 >
                   <div className="flex items-start justify-between gap-2 mb-2">
-                    <h3 className="font-bold text-white text-lg mb-1 line-clamp-2 flex-1 group-hover:text-indigo-300 transition-colors">
+                    <h3 className="font-extrabold text-[#1F2937] text-xl mb-1 line-clamp-2 flex-1 group-hover:text-[#7C5CFF] transition-colors">
                       {p.title}
                     </h3>
                     <div className="shrink-0 flex items-center gap-1">
                       {isPathPaid(p) && hasUserPurchased(p) && (
-                        <span className="px-2 py-0.5 bg-emerald-900/50 text-emerald-300 text-xs font-medium rounded">Owned</span>
+                        <span className="px-2.5 py-1 bg-emerald-100 text-emerald-700 text-xs font-bold rounded-lg">Owned</span>
                       )}
                       {isPathPaid(p) ? (
-                        <span className="px-2 py-1 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-bold rounded-lg">
+                        <span className="px-2.5 py-1 bg-amber-100 text-amber-800 text-xs font-bold rounded-lg">
                           ${((p.priceCents ?? 0) / 100).toFixed(2)}
                         </span>
                       ) : (
-                        <span className="px-2 py-1 bg-emerald-600/80 text-white text-xs font-bold rounded-lg">
+                        <span className="px-2.5 py-1 bg-emerald-100 text-emerald-700 text-xs font-bold rounded-lg">
                           Free
                         </span>
                       )}
                     </div>
                   </div>
-                  <p className="text-slate-400 text-sm mb-3 line-clamp-3 flex-1">{p.description || 'No description'}</p>
+                  <p className="text-[#6B7280] text-base font-medium mb-3 line-clamp-3 flex-1">{p.description || 'No description'}</p>
                   {tagsList.length > 0 && (
                     <div className="flex flex-wrap gap-1.5 mb-3">
                       {tagsList.map((t) => (
@@ -348,7 +348,7 @@ export default function MarketplaceBrowser({ onClose, onImportPath, onMakeYourOw
                           key={t}
                           type="button"
                           onClick={() => setTag(t)}
-                          className="px-2 py-0.5 bg-slate-700/70 hover:bg-slate-600 text-slate-300 text-xs rounded transition-colors"
+                          className="px-2.5 py-1 bg-[#E9E7F5] hover:bg-[#7C5CFF]/20 text-[#4A3F99] text-sm font-bold rounded-lg transition-colors"
                         >
                           {t}
                         </button>
@@ -356,30 +356,30 @@ export default function MarketplaceBrowser({ onClose, onImportPath, onMakeYourOw
                     </div>
                   )}
                   <div className="flex flex-wrap gap-2 mb-4">
-                    <span className={`px-3 py-1 rounded-lg text-xs font-medium ${
-                      p.difficulty === 'beginner' ? 'bg-green-900/50 text-green-300' :
-                      p.difficulty === 'intermediate' ? 'bg-blue-900/50 text-blue-300' :
-                      'bg-purple-900/50 text-purple-300'
+                    <span className={`px-3 py-1.5 rounded-lg text-sm font-bold ${
+                      p.difficulty === 'beginner' ? 'bg-green-100 text-green-800' :
+                      p.difficulty === 'intermediate' ? 'bg-blue-100 text-blue-800' :
+                      'bg-[#E8E4FF] text-[#4A3F99]'
                     }`}>
                       {p.difficulty}
                     </span>
-                    <span className="px-3 py-1 bg-slate-700/50 text-slate-300 rounded-lg text-xs">
+                    <span className="px-3 py-1.5 bg-[#E9E7F5] text-[#6B7280] rounded-lg text-sm font-bold">
                       {p.nodeCount} nodes
                     </span>
                     {p.estimatedTimeMinutes && (
-                      <span className="px-3 py-1 bg-slate-700/50 text-slate-300 rounded-lg text-xs">
+                      <span className="px-3 py-1.5 bg-[#E9E7F5] text-[#6B7280] rounded-lg text-sm font-bold">
                         {Math.round(p.estimatedTimeMinutes / 60)}h
                       </span>
                     )}
                   </div>
-                  <div className="flex items-center justify-between text-xs text-slate-500 mb-4">
+                  <div className="flex items-center justify-between text-sm text-[#6B7280] font-medium mb-4">
                     <span>{p.importCount} imports</span>
                     {p.authorEmail && <span className="truncate max-w-[120px]">{p.authorEmail}</span>}
                   </div>
                   <div className="flex gap-2 mt-auto">
                     <button
                       onClick={() => setPreviewPath(p)}
-                      className="flex-1 py-2.5 px-3 bg-slate-600 hover:bg-slate-500 text-white rounded-lg text-sm font-medium transition-colors"
+                      className="flex-1 py-2.5 px-3 bg-[#FAFAFF] hover:bg-[#F5F4FF] border border-[#E9E7F5] text-[#7C5CFF] rounded-xl text-base font-bold transition-colors hover:border-[#7C5CFF]/50"
                     >
                       Preview
                     </button>
@@ -387,7 +387,7 @@ export default function MarketplaceBrowser({ onClose, onImportPath, onMakeYourOw
                       <button
                         onClick={() => handleCheckout({ id: p.id, title: p.title, priceCents: p.priceCents ?? 0 })}
                         disabled={purchasingId === p.id}
-                        className="flex-1 py-2.5 px-3 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white rounded-lg text-sm font-bold transition-all shadow-lg hover:shadow-xl disabled:opacity-50"
+                        className="flex-1 py-2.5 px-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-base font-bold transition-all shadow-md hover:shadow-lg disabled:opacity-50"
                       >
                         {purchasingId === p.id ? '…' : 'Checkout'}
                       </button>
@@ -395,7 +395,7 @@ export default function MarketplaceBrowser({ onClose, onImportPath, onMakeYourOw
                       <button
                         onClick={() => handleImport(p.id)}
                         disabled={importingId === p.id}
-                        className="flex-1 py-2.5 px-3 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white rounded-lg text-sm font-bold transition-all shadow-lg hover:shadow-xl disabled:opacity-50"
+                        className="flex-1 py-2.5 px-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-base font-bold transition-all shadow-md hover:shadow-lg disabled:opacity-50"
                       >
                         {importingId === p.id ? 'Importing…' : isPathPaid(p) && hasUserPurchased(p) ? 'Import' : 'Get Free'}
                       </button>
@@ -410,33 +410,33 @@ export default function MarketplaceBrowser({ onClose, onImportPath, onMakeYourOw
 
       {/* Checkout modal */}
       {checkoutItem && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-800 border border-slate-600 rounded-2xl shadow-2xl w-full max-w-md">
-            <div className="p-6 border-b border-slate-700">
-              <h3 className="text-xl font-bold text-white mb-1">Checkout</h3>
-              <p className="text-slate-400 text-sm">{checkoutItem.title}</p>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-[#FFFFFF] border border-[#E9E7F5] rounded-2xl shadow-2xl w-full max-w-md">
+            <div className="p-6 border-b border-[#E9E7F5]">
+              <h3 className="text-xl font-extrabold text-[#1F2937] mb-1">Checkout</h3>
+              <p className="text-[#6B7280] text-base font-medium">{checkoutItem.title}</p>
             </div>
             <div className="p-6 space-y-4">
-              <div className="flex items-center justify-between p-4 bg-slate-700/50 rounded-xl">
-                <span className="text-slate-300 font-medium">Total</span>
-                <span className="text-2xl font-bold text-white">{formatPrice(checkoutItem.priceCents)}</span>
+              <div className="flex items-center justify-between p-4 bg-[#FAFAFF] rounded-xl border border-[#E9E7F5]">
+                <span className="text-[#6B7280] font-bold">Total</span>
+                <span className="text-2xl font-extrabold text-[#1F2937]">{formatPrice(checkoutItem.priceCents)}</span>
               </div>
               {error && (
-                <div className="p-3 bg-red-900/30 border border-red-500/50 text-red-200 rounded-lg text-sm">
+                <div className="p-3 bg-[#FEE2E2] border border-[#EF4444]/30 text-[#B91C1C] rounded-xl text-base font-semibold">
                   {error}
                 </div>
               )}
               <div className="flex gap-3">
                 <button
                   onClick={() => { setCheckoutItem(null); setError(''); }}
-                  className="flex-1 py-3 border border-slate-600 rounded-xl text-slate-300 hover:bg-slate-700 font-medium transition-colors"
+                  className="flex-1 py-3 border border-[#E9E7F5] rounded-xl text-[#6B7280] hover:bg-[#FAFAFF] font-bold transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handlePlaceOrder}
                   disabled={purchasingId === checkoutItem.id}
-                  className="flex-1 py-3 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white rounded-xl font-bold transition-all shadow-lg disabled:opacity-50"
+                  className="flex-1 py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-bold transition-all shadow-md disabled:opacity-50"
                 >
                   {purchasingId === checkoutItem.id ? 'Processing…' : 'Place order'}
                 </button>
@@ -448,25 +448,25 @@ export default function MarketplaceBrowser({ onClose, onImportPath, onMakeYourOw
 
       {/* Purchase success: Import or Back to Marketplace */}
       {purchaseSuccess && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-800 border border-slate-600 rounded-2xl shadow-2xl w-full max-w-md">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-[#FFFFFF] border border-[#E9E7F5] rounded-2xl shadow-2xl w-full max-w-md">
             <div className="p-6 text-center">
-              <div className="w-14 h-14 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-4 text-emerald-400 text-2xl">
+              <div className="w-14 h-14 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4 text-emerald-600 text-2xl font-bold">
                 ✓
               </div>
-              <h3 className="text-xl font-bold text-white mb-2">Thank you for your purchase</h3>
-              <p className="text-slate-400 text-sm mb-6">{purchaseSuccess.title} is now in your library. Import it to start learning.</p>
+              <h3 className="text-xl font-extrabold text-[#1F2937] mb-2">Thank you for your purchase</h3>
+              <p className="text-[#6B7280] text-base font-medium mb-6">{purchaseSuccess.title} is now in your library. Import it to start learning.</p>
               <div className="flex gap-3">
                 <button
                   onClick={() => setPurchaseSuccess(null)}
-                  className="flex-1 py-3 border border-slate-600 rounded-xl text-slate-300 hover:bg-slate-700 font-medium transition-colors"
+                  className="flex-1 py-3 border border-[#E9E7F5] rounded-xl text-[#6B7280] hover:bg-[#FAFAFF] font-bold transition-colors"
                 >
                   Back to Marketplace
                 </button>
                 <button
                   onClick={handleImportAfterPurchase}
                   disabled={importingId === purchaseSuccess.id}
-                  className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold transition-colors disabled:opacity-50"
+                  className="flex-1 py-3 bg-[#7C5CFF] hover:bg-[#6B4CE6] text-white rounded-xl font-bold transition-colors disabled:opacity-50"
                 >
                   {importingId === purchaseSuccess.id ? 'Importing…' : 'Import to my paths'}
                 </button>
@@ -493,44 +493,44 @@ export default function MarketplaceBrowser({ onClose, onImportPath, onMakeYourOw
 
       {/* AI Generate Modal */}
       {showAIGenerate && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-800 border border-slate-700 rounded-2xl p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto">
-            <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-[#FFFFFF] border border-[#E9E7F5] rounded-2xl p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+            <h3 className="text-xl font-extrabold text-[#1F2937] mb-4 flex items-center gap-2">
               <span>✨</span> Generate AI Course
             </h3>
             {error && (
-              <div className="mb-4 bg-red-900/40 border border-red-500/50 text-red-200 p-3 rounded-lg text-sm">
+              <div className="mb-4 bg-[#FEE2E2] border border-[#EF4444]/30 text-[#B91C1C] p-3 rounded-xl text-base font-semibold">
                 {error}
               </div>
             )}
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1">Topic *</label>
+                <label className="block text-sm font-bold text-[#1F2937] mb-1">Topic *</label>
                 <input
                   type="text"
                   value={aiTopic}
                   onChange={(e) => setAiTopic(e.target.value)}
                   placeholder="e.g., Machine Learning Basics, React Hooks, Python Data Science"
-                  className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-4 py-2.5 bg-[#FBFBFF] border border-[#E9E7F5] rounded-xl text-[#1F2937] placeholder-[#6B7280] focus:outline-none focus:ring-2 focus:ring-[#7C5CFF]/40 font-medium"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1">Description (optional)</label>
+                <label className="block text-sm font-bold text-[#1F2937] mb-1">Description (optional)</label>
                 <textarea
                   value={aiDescription}
                   onChange={(e) => setAiDescription(e.target.value)}
                   placeholder="What should students learn? What level is this for?"
                   rows={3}
-                  className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-4 py-2.5 bg-[#FBFBFF] border border-[#E9E7F5] rounded-xl text-[#1F2937] placeholder-[#6B7280] focus:outline-none focus:ring-2 focus:ring-[#7C5CFF]/40 font-medium"
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-1">Difficulty</label>
+                  <label className="block text-sm font-bold text-[#1F2937] mb-1">Difficulty</label>
                   <select
                     value={aiDifficulty}
                     onChange={(e) => setAiDifficulty(e.target.value)}
-                    className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white"
+                    className="w-full px-4 py-2.5 bg-[#FBFBFF] border border-[#E9E7F5] rounded-xl text-[#1F2937] font-bold"
                   >
                     <option value="beginner">Beginner</option>
                     <option value="intermediate">Intermediate</option>
@@ -538,14 +538,14 @@ export default function MarketplaceBrowser({ onClose, onImportPath, onMakeYourOw
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-1">Time (minutes)</label>
+                  <label className="block text-sm font-bold text-[#1F2937] mb-1">Time (minutes)</label>
                   <input
                     type="number"
                     value={aiTimeMinutes}
                     onChange={(e) => setAiTimeMinutes(parseInt(e.target.value) || 600)}
                     min={60}
                     step={60}
-                    className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white"
+                    className="w-full px-4 py-2.5 bg-[#FBFBFF] border border-[#E9E7F5] rounded-xl text-[#1F2937] font-medium"
                   />
                 </div>
               </div>
@@ -559,14 +559,14 @@ export default function MarketplaceBrowser({ onClose, onImportPath, onMakeYourOw
                   setAiDescription('');
                 }}
                 disabled={generatingAI}
-                className="flex-1 px-4 py-2.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-medium disabled:opacity-50"
+                className="flex-1 px-4 py-2.5 bg-[#FAFAFF] hover:bg-[#F5F4FF] border border-[#E9E7F5] text-[#6B7280] rounded-xl font-bold disabled:opacity-50 transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={handleGenerateAICourse}
                 disabled={generatingAI || !aiTopic.trim()}
-                className="flex-1 px-4 py-2.5 bg-purple-600 hover:bg-purple-500 text-white rounded-lg font-medium disabled:opacity-50 flex items-center justify-center gap-2"
+                className="flex-1 px-4 py-2.5 bg-[#7C5CFF] hover:bg-[#6B4CE6] text-white rounded-xl font-bold disabled:opacity-50 flex items-center justify-center gap-2 transition-colors"
               >
                 {generatingAI ? (
                   <>

@@ -8,6 +8,8 @@ public class GenerateQuestionsRequest {
     
     private String difficulty;
     private Integer count; // default 5
+    /** Optional: e.g. "AMC8" to use competition-style, harder prompts */
+    private String pathName;
     
     public String getTopic() { return topic; }
     public void setTopic(String topic) { this.topic = topic; }
@@ -15,4 +17,6 @@ public class GenerateQuestionsRequest {
     public void setDifficulty(String difficulty) { this.difficulty = difficulty; }
     public Integer getCount() { return count; }
     public void setCount(Integer count) { this.count = count; }
+    public String getPathName() { return pathName; }
+    public void setPathName(String pathName) { this.pathName = pathName; }
 }

@@ -1,6 +1,7 @@
 package com.masterypath.api.ai;
 
 import com.masterypath.api.ai.dto.CheckAnswerRequest;
+import com.masterypath.api.ai.dto.GenerateQuestionsRequest;
 import com.masterypath.api.ai.dto.*;
 import com.masterypath.domain.model.User;
 import com.masterypath.domain.service.AIService;
@@ -8,6 +9,7 @@ import com.masterypath.domain.service.AuthService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -71,11 +73,16 @@ public class AIController {
                 .body(Map.of("error", "Not authenticated"));
         }
         
+        if (!aiService.isAiConfigured()) {
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(Map.of("error", "AI is not configured. Add GEMINI_API_KEY or OPENAI_API_KEY to your .env file (see .env.example). Restart the backend after adding keys."));
+        }
         try {
             List<AIService.QuestionSuggestion> questions = aiService.generateQuestions(
                 request.getTopic(),
                 request.getDifficulty(),
-                request.getCount() != null ? request.getCount() : 5
+                request.getCount() != null ? request.getCount() : 5,
+                request.getPathName()
             );
             
             GenerateQuestionsResponse response = new GenerateQuestionsResponse();
@@ -101,7 +108,10 @@ public class AIController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                 .body(Map.of("error", "Not authenticated"));
         }
-        
+        if (!aiService.isAiConfigured()) {
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(Map.of("error", "AI is not configured. Add GEMINI_API_KEY or OPENAI_API_KEY to your .env file. Restart the backend after adding keys."));
+        }
         try {
             List<AIService.QuestionSuggestion> questions = aiService.generateSimilarQuestions(
                 request.getOriginalQuestion(),
@@ -121,6 +131,36 @@ public class AIController {
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(Map.of("error", "Failed to generate similar questions: " + e.getMessage()));
+        }
+    }
+
+    @PostMapping("/generate-homework-pdf")
+    public ResponseEntity<?> generateHomeworkPdf(@Valid @RequestBody GenerateQuestionsRequest request,
+                                                  HttpServletRequest httpRequest) {
+        User user = getCurrentUser(httpRequest);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(Map.of("error", "Not authenticated"));
+        }
+        if (!aiService.isAiConfigured()) {
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(Map.of("error", "AI is not configured. Add GEMINI_API_KEY or OPENAI_API_KEY to your .env file. Restart the backend after adding keys."));
+        }
+        try {
+            byte[] pdfBytes = aiService.generateHomeworkPdf(
+                request.getTopic(),
+                request.getDifficulty() != null ? request.getDifficulty() : "intermediate",
+                request.getCount() != null ? request.getCount() : 5,
+                request.getPathName()
+            );
+            String filename = "homework-" + request.getTopic().replaceAll("[^a-zA-Z0-9]", "-") + ".pdf";
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_PDF);
+            headers.setContentDispositionFormData("attachment", filename);
+            return new ResponseEntity<>(pdfBytes, headers, HttpStatus.OK);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of("error", "Failed to generate PDF: " + e.getMessage()));
         }
     }
     
@@ -157,7 +197,59 @@ public class AIController {
                 .body(Map.of("error", "Failed to extract text: " + e.getMessage()));
         }
     }
+
+    @PostMapping(value = "/extract-text-to-pdf", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> extractTextToPdf(@RequestParam("file") MultipartFile file,
+                                              HttpServletRequest httpRequest) {
+        User user = getCurrentUser(httpRequest);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(Map.of("error", "Not authenticated"));
+        }
+        if (file.isEmpty()) {
+            return ResponseEntity.badRequest()
+                .body(Map.of("error", "File is empty"));
+        }
+        try {
+            byte[] pdfBytes = aiService.extractTextToPdf(file.getBytes(), file.getContentType());
+            String filename = "problems-only.pdf";
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_PDF);
+            headers.setContentDispositionFormData("attachment", filename);
+            return new ResponseEntity<>(pdfBytes, headers, HttpStatus.OK);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of("error", "Failed to create PDF: " + e.getMessage()));
+        }
+    }
     
+    @PostMapping(value = "/mark-homework", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> markHomework(@RequestParam("file") MultipartFile file,
+                                          @RequestParam(value = "question", required = false) String question,
+                                          HttpServletRequest httpRequest) {
+        User user = getCurrentUser(httpRequest);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(Map.of("error", "Not authenticated"));
+        }
+        if (file.isEmpty()) {
+            return ResponseEntity.badRequest()
+                .body(Map.of("error", "File is empty"));
+        }
+        try {
+            String contentType = file.getContentType();
+            AIService.MarkingResult result = aiService.markHomework(file.getBytes(), contentType, question);
+            Map<String, Object> response = new HashMap<>();
+            response.put("score", result.getScore());
+            response.put("feedback", result.getFeedback());
+            response.put("extractedText", result.getExtractedText());
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of("error", "Failed to mark homework: " + e.getMessage()));
+        }
+    }
+
     @PostMapping(value = "/mark-drawing", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<?> markDrawing(@RequestParam("image") MultipartFile image,
                                         @RequestParam(value = "question", required = false) String question,
@@ -222,6 +314,27 @@ public class AIController {
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(Map.of("error", "Failed to get feedback: " + e.getMessage()));
+        }
+    }
+
+    @PostMapping("/check-code")
+    public ResponseEntity<?> checkCode(@RequestBody CheckCodeRequest request,
+                                       HttpServletRequest httpRequest) {
+        User user = getCurrentUser(httpRequest);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(Map.of("error", "Not authenticated"));
+        }
+        try {
+            CheckCodeResponse response = aiService.checkCode(
+                request.getProblemStatement(),
+                request.getCode(),
+                request.getLanguage() != null ? request.getLanguage() : "python",
+                request.getTestCases());
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of("error", "Failed to check code: " + e.getMessage()));
         }
     }
     

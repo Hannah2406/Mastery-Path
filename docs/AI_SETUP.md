@@ -1,15 +1,18 @@
-# AI API setup (Generate path, Generate questions)
+# AI API setup (Generate path, questions, marking, hints)
 
-## Quick connect
+## Quick connect (use one key)
 
-1. Get an API key from [OpenAI](https://platform.openai.com/api-keys) (or use any OpenAI-compatible provider).
-2. Set it when starting the app:
-   ```bash
-   export OPENAI_API_KEY=sk-your-key-here
-   ./start-all.sh
-   ```
-   Or: `export OPENAI_API_KEY=sk-...` then `cd backend && mvn spring-boot:run`
-3. Restart the backend after changing the key.
+**Option 1 – Gemini (free)**  
+1. Get a key: [Google AI Studio](https://aistudio.google.com/app/apikey)  
+2. Copy `.env.example` to `.env` and set `GEMINI_API_KEY=your-key`  
+3. Load and start: `source .env` then `cd backend && mvn spring-boot:run` (or `./start-all.sh`)
+
+**Option 2 – OpenAI**  
+1. Get a key from [OpenAI](https://platform.openai.com/api-keys)  
+2. In `.env` set `OPENAI_API_KEY=sk-your-key`  
+3. `source .env` then start the backend  
+
+If no key is set, generate/similar questions return a clear error; marking and check-answer show “AI is not configured” with a link to get a key.
 
 Optional: set `OPENAI_API_BASE` to use another endpoint (e.g. Azure, Groq):  
 `export OPENAI_API_BASE=https://api.groq.com/openai/v1`

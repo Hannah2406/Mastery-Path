@@ -3,6 +3,7 @@ import { markDrawing } from '../../api/ai';
 
 export default function DrawingCanvas({ question, onClose, onMarked }) {
   const canvasRef = useRef(null);
+  const containerRef = useRef(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [color, setColor] = useState('#000000');
   const [lineWidth, setLineWidth] = useState(3);
@@ -11,38 +12,91 @@ export default function DrawingCanvas({ question, onClose, onMarked }) {
   const [error, setError] = useState('');
   const questionText = question != null && typeof question === 'string' ? question : '';
 
+  // Size canvas to container so cursor coordinates match 1:1 (fixes draw box misalignment)
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    const container = containerRef.current;
+    if (!canvas || !container) return;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const w = Math.floor(container.clientWidth);
+    const h = Math.min(Math.floor(container.clientHeight || 400), 600);
+    if (w <= 0 || h <= 0) return;
+    canvas.width = w * dpr;
+    canvas.height = h * dpr;
+    canvas.style.width = w + 'px';
+    canvas.style.height = h + 'px';
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
+    ctx.scale(dpr, dpr);
     ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillRect(0, 0, w, h);
     ctx.strokeStyle = color;
     ctx.lineWidth = lineWidth;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
   }, [color, lineWidth]);
 
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const ro = new ResizeObserver(() => {
+      const canvas = canvasRef.current;
+      if (!canvas || !containerRef.current) return;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const w = Math.floor(containerRef.current.clientWidth);
+      const h = Math.min(Math.floor(containerRef.current.clientHeight || 400), 600);
+      if (w <= 0 || h <= 0) return;
+      canvas.width = w * dpr;
+      canvas.height = h * dpr;
+      canvas.style.width = w + 'px';
+      canvas.style.height = h + 'px';
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.scale(dpr, dpr);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, w, h);
+      }
+    });
+    ro.observe(container);
+    return () => ro.disconnect();
+  }, []);
+
+  const getCanvasCoords = (e) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return null;
+    const rect = canvas.getBoundingClientRect();
+    const clientX = e.clientX ?? (e.touches?.[0]?.clientX);
+    const clientY = e.clientY ?? (e.touches?.[0]?.clientY);
+    if (clientX == null || clientY == null) return null;
+    if (rect.width <= 0 || rect.height <= 0) return null;
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    return {
+      x: (clientX - rect.left) * (scaleX / dpr),
+      y: (clientY - rect.top) * (scaleY / dpr),
+    };
+  };
+
   const startDrawing = (e) => {
     const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const ctx = canvas?.getContext('2d');
+    const coords = getCanvasCoords(e);
+    if (!ctx || !coords) return;
     ctx.beginPath();
-    ctx.moveTo(x, y);
+    ctx.moveTo(coords.x, coords.y);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = lineWidth;
     setIsDrawing(true);
   };
 
   const draw = (e) => {
     if (!isDrawing) return;
     const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    ctx.lineTo(x, y);
+    const ctx = canvas?.getContext('2d');
+    const coords = getCanvasCoords(e);
+    if (!ctx || !coords) return;
+    ctx.lineTo(coords.x, coords.y);
     ctx.stroke();
   };
 
@@ -52,9 +106,13 @@ export default function DrawingCanvas({ question, onClose, onMarked }) {
 
   const clearCanvas = () => {
     const canvas = canvasRef.current;
+    if (!canvas) return;
     const ctx = canvas.getContext('2d');
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const w = canvas.width / dpr;
+    const h = canvas.height / dpr;
     ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillRect(0, 0, w, h);
     setResult(null);
     setError('');
   };
@@ -151,12 +209,10 @@ export default function DrawingCanvas({ question, onClose, onMarked }) {
             </button>
           </div>
 
-          {/* Canvas */}
-          <div className="border-2 border-slate-600 rounded-xl overflow-hidden bg-white">
+          {/* Canvas - container sized so cursor and draw align 1:1 */}
+          <div ref={containerRef} className="border-2 border-slate-600 rounded-xl overflow-hidden bg-white w-full aspect-video max-h-[50vh]" style={{ minHeight: 280 }}>
             <canvas
               ref={canvasRef}
-              width={800}
-              height={600}
               onMouseDown={startDrawing}
               onMouseMove={draw}
               onMouseUp={stopDrawing}
@@ -164,27 +220,21 @@ export default function DrawingCanvas({ question, onClose, onMarked }) {
               onTouchStart={(e) => {
                 e.preventDefault();
                 const touch = e.touches[0];
-                const mouseEvent = new MouseEvent('mousedown', {
-                  clientX: touch.clientX,
-                  clientY: touch.clientY,
-                });
-                canvasRef.current.dispatchEvent(mouseEvent);
+                if (!touch) return;
+                startDrawing({ clientX: touch.clientX, clientY: touch.clientY });
               }}
               onTouchMove={(e) => {
                 e.preventDefault();
+                if (!isDrawing) return;
                 const touch = e.touches[0];
-                const mouseEvent = new MouseEvent('mousemove', {
-                  clientX: touch.clientX,
-                  clientY: touch.clientY,
-                });
-                canvasRef.current.dispatchEvent(mouseEvent);
+                if (!touch) return;
+                draw({ clientX: touch.clientX, clientY: touch.clientY });
               }}
               onTouchEnd={(e) => {
                 e.preventDefault();
-                const mouseEvent = new MouseEvent('mouseup', {});
-                canvasRef.current.dispatchEvent(mouseEvent);
+                stopDrawing();
               }}
-              className="w-full cursor-crosshair"
+              className="w-full max-w-full h-auto cursor-crosshair block"
               style={{ touchAction: 'none' }}
             />
           </div>
@@ -196,7 +246,7 @@ export default function DrawingCanvas({ question, onClose, onMarked }) {
           )}
 
           {result && (
-            <div className="p-4 bg-green-900/30 border border-green-500/50 rounded-xl space-y-3">
+            <div className={`p-4 rounded-xl space-y-3 ${(result.feedback || '').toLowerCase().includes('not configured') ? 'bg-amber-900/30 border border-amber-500/50' : 'bg-green-900/30 border border-green-500/50'}`}>
               <div className="flex items-center justify-between">
                 <h4 className="font-bold text-green-200 text-lg">AI Marking Results</h4>
                 {result.score !== null && (
@@ -207,6 +257,9 @@ export default function DrawingCanvas({ question, onClose, onMarked }) {
               </div>
               {result.feedback && (
                 <div className="text-green-100 whitespace-pre-wrap">{result.feedback}</div>
+              )}
+              {result.feedback && result.feedback.toLowerCase().includes('not configured') && (
+                <p className="text-amber-200 text-sm font-bold">Add GEMINI_API_KEY or OPENAI_API_KEY to .env and restart the backend. <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="underline">Get free key</a></p>
               )}
               {result.extractedText && (
                 <div className="mt-3 pt-3 border-t border-green-500/30">

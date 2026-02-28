@@ -30,10 +30,12 @@ It is only removed if you run `docker compose down -v` (the `-v` deletes the vol
 
 - **One shared database** for all users: same marketplace, same seed paths.
 - **Flyway migrations** run on first start and create:
-  - Categories and nodes (Blind 75, AMC8, etc.)
-  - Seed paths (Blind 75, AMC8) owned by the demo user
-  - Marketplace entries (published paths) for everyone to see and import
+  - **V2** – Categories and nodes (Blind 75, AMC8, etc.) and seed paths (Blind 75, AMC8).
+  - **V7_1** – Demo user (`demo@masterypath.app` / password `demo`) so marketplace paths have an author.
+  - **V8** – **Marketplace data**: 9 published paths (e.g. “Blind 75 - Complete Interview Prep”, “System Design Mastery Path”, “Advanced Algorithms & Data Structures”, free and paid), plus `marketplace_path_node` rows linking them to existing nodes. This is why the Marketplace tab shows multiple courses.
 - **New users**: when you register, you get your own copy of starter paths and you see the full marketplace.
+
+If the **Marketplace tab is empty**, the DB may have been created before V8 existed. Ensure PostgreSQL is running, then either use a fresh DB (e.g. new volume) or run the app so Flyway applies all migrations; V8 only inserts when a path named “Blind 75” exists (from V2).
 
 ## If the backend won’t start
 

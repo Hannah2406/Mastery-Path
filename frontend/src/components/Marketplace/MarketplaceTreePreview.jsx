@@ -110,20 +110,20 @@ export default function MarketplaceTreePreview({
   }, [marketplacePathId]);
 
   return (
-    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-      <div className="bg-slate-800 border border-slate-600 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
-        <div className="p-4 border-b border-slate-700 flex items-center justify-between flex-shrink-0 gap-3">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-[#FFFFFF] border border-[#E9E7F5] rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+        <div className="p-4 border-b border-[#E9E7F5] flex items-center justify-between flex-shrink-0 gap-3">
           <button
             onClick={onClose}
-            className="inline-flex items-center gap-2 px-3 py-2 bg-slate-700 hover:bg-slate-600 border border-slate-600 rounded-lg text-white font-medium text-sm transition-colors"
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#FAFAFF] hover:bg-[#F5F4FF] border border-[#E9E7F5] rounded-xl text-[#1F2937] font-bold text-base transition-colors"
           >
             <span aria-hidden>←</span>
             Back
           </button>
-          <h3 className="text-lg font-bold text-white truncate flex-1 text-center">Preview: {pathName}</h3>
+          <h3 className="text-lg font-extrabold text-[#1F2937] truncate flex-1 text-center">Preview: {pathName}</h3>
           <button
             onClick={onClose}
-            className="w-10 h-10 shrink-0 flex items-center justify-center text-slate-400 hover:text-white rounded-lg hover:bg-slate-700 transition-colors"
+            className="w-10 h-10 shrink-0 flex items-center justify-center text-[#6B7280] hover:text-[#1F2937] rounded-lg hover:bg-[#FAFAFF] transition-colors"
             aria-label="Close"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
@@ -132,12 +132,12 @@ export default function MarketplaceTreePreview({
         <div className="flex-1 min-h-0 p-4">
           {loading ? (
             <div className="flex justify-center items-center h-64">
-              <div className="animate-spin rounded-full h-10 w-10 border-2 border-slate-600 border-t-indigo-500" />
+              <div className="animate-spin rounded-full h-10 w-10 border-2 border-[#E9E7F5] border-t-[#7C5CFF]" />
             </div>
           ) : error ? (
-            <div className="p-4 bg-red-900/30 border border-red-500/50 text-red-200 rounded-xl">{error}</div>
+            <div className="p-4 bg-[#FEE2E2] border border-[#EF4444]/30 text-[#B91C1C] rounded-xl font-semibold">{error}</div>
           ) : (
-            <div className="h-[500px] bg-slate-800/50 rounded-xl border border-slate-700 overflow-hidden">
+            <div className="h-[500px] bg-[#FAFAFF] rounded-xl border border-[#E9E7F5] overflow-hidden">
               <ReactFlow
                 nodes={nodes}
                 edges={edges}
@@ -152,19 +152,19 @@ export default function MarketplaceTreePreview({
                 nodesConnectable={false}
                 elementsSelectable={false}
               >
-                <Background color="#334155" gap={20} />
+                <Background color="#E9E7F5" gap={20} />
               </ReactFlow>
             </div>
           )}
         </div>
-        <div className="p-4 border-t border-slate-700 flex-shrink-0 flex flex-wrap items-center justify-center gap-3">
+        <div className="p-4 border-t border-[#E9E7F5] flex-shrink-0 flex flex-wrap items-center justify-center gap-3">
           {path && onImport && (
             <>
               {isPathPaid && !hasUserPurchased && onCheckout && (
                 <button
                   onClick={onCheckout}
                   disabled={purchasingId === path.id}
-                  className="px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white rounded-lg text-sm font-bold disabled:opacity-50"
+                  className="px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-base font-bold disabled:opacity-50 transition-colors"
                 >
                   {purchasingId === path.id ? '…' : `Checkout ${formatPrice ? formatPrice(path.priceCents) : ''}`}
                 </button>
@@ -172,14 +172,14 @@ export default function MarketplaceTreePreview({
               <button
                 onClick={onImport}
                 disabled={importingId === path.id}
-                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-bold disabled:opacity-50"
+                className="px-5 py-2.5 bg-[#7C5CFF] hover:bg-[#6B4CE6] text-white rounded-xl text-base font-bold disabled:opacity-50 transition-colors"
               >
                 {importingId === path.id ? 'Importing…' : isPathPaid && hasUserPurchased ? 'Import' : 'Get Free'}
               </button>
             </>
           )}
           {(!path || !onImport) && (
-            <span className="text-slate-500 text-sm">Read-only preview. Import from the marketplace to practice.</span>
+            <span className="text-[#6B7280] text-base font-semibold">Read-only preview. Import from the marketplace to practice.</span>
           )}
         </div>
       </div>

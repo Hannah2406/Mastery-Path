@@ -1,20 +1,59 @@
 @import "tailwindcss";
 
+/* Soft Pastel palette — Palette C */
+@theme {
+  --color-app-bg: #FBFBFF;
+  --color-app-surface: #FFFFFF;
+  --color-app-primary: #FF6FAE;
+  --color-app-primary-hover: #F2559A;
+  --color-app-accent1: #7C5CFF;
+  --color-app-accent2: #4CD7B0;
+  --color-app-success: #22C55E;
+  --color-app-warning: #F59E0B;
+  --color-app-error: #EF4444;
+  --color-app-text: #1F2937;
+  --color-app-muted: #6B7280;
+  --color-app-border: #E9E7F5;
+  --font-heading: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-body: "Manrope", ui-sans-serif, system-ui, sans-serif;
+}
+
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
 
+html {
+  width: 100%;
+  overflow-x: hidden;
+  /* Slight responsive base */
+  font-size: clamp(15px, 0.9vw + 14px, 17px);
+}
+
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+  font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background: #0f172a;
+  width: 100%;
+  min-width: 0;
   min-height: 100vh;
-  color: #e2e8f0;
+  min-height: 100dvh;
+  margin: 0 auto;
+  background: var(--color-app-bg);
+  color: var(--color-app-text);
+  overflow-x: hidden;
+  line-height: 1.5;
+}
+
+#root {
+  width: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+.font-heading {
+  font-family: var(--font-heading);
 }
 
 @keyframes fadeIn {
@@ -33,25 +72,28 @@ body {
 }
 
 .glass-effect {
-  background: rgba(30, 41, 59, 0.9);
+  background: rgba(255, 255, 255, 0.9);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  border: 1px solid rgba(71, 85, 105, 0.5);
+  border: 1px solid #E9E7F5;
 }
 
-/* Dark theme overrides for React Flow */
+/* React Flow — soft pastel */
 .react-flow__background {
-  background: #0f172a !important;
+  background: #FBFBFF !important;
 }
 .react-flow__controls {
-  background: #1e293b !important;
-  border: 1px solid #334155 !important;
+  background: #FFFFFF !important;
+  border: 1px solid #E9E7F5 !important;
+  border-radius: 12px;
+  overflow: hidden;
 }
 .react-flow__controls-button {
-  background: #1e293b !important;
-  fill: #94a3b8 !important;
-  border-color: #334155 !important;
+  background: #FFFFFF !important;
+  fill: #6B7280 !important;
+  border-color: #E9E7F5 !important;
 }
 .react-flow__controls-button:hover {
-  background: #334155 !important;
+  background: #FBFBFF !important;
+  fill: #1F2937 !important;
 }
