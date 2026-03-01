@@ -165,8 +165,8 @@ public class AIService {
         }
     }
 
-    /** Turn raw AI API errors (429, quota) into a short user-facing message for marking. */
-    private static String friendlyMarkingError(String message) {
+    /** Turn raw AI API errors (429, quota) into a short user-facing message for marking / PDF generation. */
+    public static String friendlyMarkingError(String message) {
         if (message == null) return null;
         String m = message.toLowerCase();
         if (m.contains("429") || m.contains("too many requests") || m.contains("resource_exhausted") || m.contains("quota exceeded") || m.contains("rate limit")) {
@@ -883,12 +883,31 @@ public class AIService {
     }
     
     /**
+     * Built-in test data for common problems when AI is unavailable or fails.
+     */
+    private LeetCodeTestData getBuiltinLeetCodeData(String problemStatement) {
+        if (problemStatement == null) return null;
+        String lower = problemStatement.toLowerCase();
+        if (lower.contains("two sum")) {
+            List<TestCaseDTO> cases = List.of(
+                new TestCaseDTO("{\"nums\":[2,7,11,15],\"target\":9}", "[0,1]"),
+                new TestCaseDTO("{\"nums\":[3,2,4],\"target\":6}", "[1,2]"),
+                new TestCaseDTO("{\"nums\":[3,3],\"target\":6}", "[0,1]"),
+                new TestCaseDTO("{\"nums\":[1,5,3,7,2],\"target\":10}", "[2,3]")
+            );
+            return new LeetCodeTestData("Solution", "twoSum", List.of("nums", "target"), cases);
+        }
+        return null;
+    }
+
+    /**
      * Generate LeetCode-style test cases: function signature + JSON input/output.
      * Returns null if parsing fails; otherwise returns signature and test cases.
+     * Falls back to built-in test cases for known problems (e.g. Two Sum) when AI is unavailable or fails.
      */
     public LeetCodeTestData generateLeetCodeTestCases(String problemStatement) {
-        if (!aiEnabled || !hasAiKey()) return null;
-        try {
+        if (aiEnabled && hasAiKey()) {
+            try {
             String prompt = String.format("""
                 This is a LeetCode-style coding problem. Extract the function signature and generate 3-5 test cases.
                 
@@ -932,10 +951,13 @@ public class AIService {
             }
             if (paramNames.isEmpty()) paramNames = List.of("nums", "target");
             return new LeetCodeTestData(className, methodName, paramNames, cases);
-        } catch (Exception e) {
-            log.warn("Failed to generate LeetCode test data: {}", e.getMessage());
-            return null;
+            } catch (Exception e) {
+                log.warn("Failed to generate LeetCode test data: {}", e.getMessage());
+                LeetCodeTestData fallback = getBuiltinLeetCodeData(problemStatement);
+                return fallback;
+            }
         }
+        return getBuiltinLeetCodeData(problemStatement);
     }
 
     public static class LeetCodeTestData {
@@ -1013,7 +1035,8 @@ public class AIService {
         }
         int failed = results.size() - passed;
         String aiFeedback = null;
-        if (aiEnabled && hasAiKey()) {
+        // Only call AI for feedback when tests failed or execution error (saves 1 request when all pass)
+        if (passed < results.size() && aiEnabled && hasAiKey()) {
             try {
                 String summary = String.format("Passed %d/%d test cases.", passed, results.size());
                 boolean executionFailed = passed == 0 && results.stream()
@@ -1026,6 +1049,8 @@ public class AIService {
             } catch (Exception e) {
                 log.debug("AI code feedback skipped: {}", e.getMessage());
             }
+        } else if (passed == results.size() && results.size() > 0) {
+            aiFeedback = "All tests passed! Nice work.";
         }
         return new CheckCodeResponse(passed, failed, results.size(), results, aiFeedback);
     }

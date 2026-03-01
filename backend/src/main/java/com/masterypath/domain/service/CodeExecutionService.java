@@ -13,13 +13,23 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.concurrent.*;
+
 /**
- * Runs user code via Piston public API (https://emkc.org/api/v2/piston).
+ * Runs user code via Piston public API, with local Java fallback when Piston is unavailable.
  */
 @Service
 public class CodeExecutionService {
     private static final Logger log = LoggerFactory.getLogger(CodeExecutionService.class);
     private static final String PISTON_EXECUTE_URL = "https://emkc.org/api/v2/piston/execute";
+    private static final int COMPILE_TIMEOUT_SEC = 15;
+    private static final int RUN_TIMEOUT_SEC = 10;
 
     private final RestTemplate restTemplate = new RestTemplate();
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -39,13 +49,25 @@ public class CodeExecutionService {
     }
 
     /**
-     * Execute code with the given stdin. Returns stdout on success; throws or returns stderr info on failure.
+     * Execute code with the given stdin. Uses Piston API; for Java, falls back to local execution when Piston is unavailable.
      */
     public ExecutionResult execute(String code, String language, String stdin) {
         String pistonLang = toPistonLanguage(language);
+        ExecutionResult pistonResult = tryPiston(code, pistonLang, stdin);
+        if (pistonResult != null) {
+            return pistonResult;
+        }
+        if ("java".equals(pistonLang)) {
+            log.info("Piston failed for Java, trying local execution");
+            return runJavaLocally(code, stdin != null ? stdin : "");
+        }
+        return new ExecutionResult(null, "Code execution service is temporarily unavailable. Run tests locally or try again later.", false);
+    }
+
+    private ExecutionResult tryPiston(String code, String language, String stdin) {
         try {
             ObjectNode root = objectMapper.createObjectNode();
-            root.put("language", pistonLang);
+            root.put("language", language);
             root.put("version", "*");
             ArrayNode files = objectMapper.createArrayNode();
             ObjectNode file = objectMapper.createObjectNode();
@@ -63,7 +85,7 @@ public class CodeExecutionService {
             if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
                 int statusCode = response.getStatusCode().value();
                 if (statusCode == 401 || statusCode == 403) {
-                    return new ExecutionResult(null, "Code execution service (Piston) returned auth error. Tests cannot run; try again later or run your code locally.", false);
+                    return null;
                 }
                 return new ExecutionResult(null, "Execution service returned " + statusCode + ". Try again later.", false);
             }
@@ -81,16 +103,78 @@ public class CodeExecutionService {
             String stdout = run.has("stdout") ? run.get("stdout").asText() : "";
             int exitCode = run.has("code") ? run.get("code").asInt() : -1;
             if (exitCode != 0 && stderr.isBlank()) stderr = "Process exited with code " + exitCode;
-            boolean success = exitCode == 0;
-            return new ExecutionResult(stdout, stderr.isEmpty() ? null : stderr, success);
+            return new ExecutionResult(stdout, stderr.isEmpty() ? null : stderr, exitCode == 0);
         } catch (Exception e) {
             log.warn("Piston execute failed: {}", e.getMessage());
-            String msg = e.getMessage() != null ? e.getMessage() : "";
-            if (msg.contains("401") || msg.contains("Unauthorized")) {
-                return new ExecutionResult(null, "Code execution service is temporarily unavailable. Run tests locally or try again later.", false);
-            }
-            return new ExecutionResult(null, "Execution failed: " + msg, false);
+            return null;
         }
+    }
+
+    private ExecutionResult runJavaLocally(String code, String stdin) {
+        Path dir = null;
+        try {
+            dir = Files.createTempDirectory("masterypath_java_");
+            Path mainJava = dir.resolve("Main.java");
+            Files.writeString(mainJava, code, StandardCharsets.UTF_8);
+
+            ProcessBuilder compilePb = new ProcessBuilder("javac", "-encoding", "UTF-8", "Main.java");
+            compilePb.directory(dir.toFile());
+            compilePb.redirectErrorStream(true);
+            Process compileProcess = compilePb.start();
+            String compileOut = readFully(compileProcess.getInputStream());
+            boolean compiled = compileProcess.waitFor(COMPILE_TIMEOUT_SEC, TimeUnit.SECONDS);
+            if (!compiled) {
+                compileProcess.destroyForcibly();
+                return new ExecutionResult(null, "Compilation timed out.", false);
+            }
+            if (compileProcess.exitValue() != 0) {
+                return new ExecutionResult(null, compileOut.isEmpty() ? "Compilation failed." : compileOut, false);
+            }
+
+            ProcessBuilder runPb = new ProcessBuilder("java", "Main");
+            runPb.directory(dir.toFile());
+            runPb.redirectErrorStream(false);
+            Process runProcess = runPb.start();
+            if (stdin != null && !stdin.isEmpty()) {
+                try (OutputStream os = runProcess.getOutputStream()) {
+                    os.write(stdin.getBytes(StandardCharsets.UTF_8));
+                }
+            }
+            String stdout = readFully(runProcess.getInputStream());
+            String stderr = readFully(runProcess.getErrorStream());
+            boolean finished = runProcess.waitFor(RUN_TIMEOUT_SEC, TimeUnit.SECONDS);
+            if (!finished) {
+                runProcess.destroyForcibly();
+                return new ExecutionResult(stdout, (stderr.isEmpty() ? "Run timed out (" + RUN_TIMEOUT_SEC + "s)." : stderr + "\nRun timed out."), false);
+            }
+            int exitCode = runProcess.exitValue();
+            return new ExecutionResult(stdout, stderr.isEmpty() ? null : stderr, exitCode == 0);
+        } catch (Exception e) {
+            log.warn("Local Java execution failed: {}", e.getMessage());
+            return new ExecutionResult(null, "Local run failed: " + (e.getMessage() != null ? e.getMessage() : "unknown"), false);
+        } finally {
+            if (dir != null) {
+                try {
+                    Files.walk(dir).sorted((a, b) -> -a.compareTo(b)).forEach(p -> {
+                        try { Files.deleteIfExists(p); } catch (Exception ignored) { }
+                    });
+                } catch (Exception ignored) { }
+            }
+        }
+    }
+
+    private static String readFully(java.io.InputStream is) {
+        StringBuilder sb = new StringBuilder();
+        try (BufferedReader r = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
+            String line;
+            while ((line = r.readLine()) != null) {
+                if (sb.length() > 0) sb.append("\n");
+                sb.append(line);
+            }
+        } catch (Exception e) {
+            return "";
+        }
+        return sb.toString();
     }
 
     public static class ExecutionResult {

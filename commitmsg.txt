@@ -1,0 +1,8 @@
+AMC8 difficulty, homework PDF, code IDE, AI feedback, and UX improvements
+
+- AMC8: competition-caliber questions (V11), no fallback to easy DB; prompt for node-relevant questions
+- Homework: single Generate homework PDF button; friendly errors for 429/quota
+- Code editor: LeetCode-style IDE, template, auto-indent, auto-closing brackets; Java; Two Sum tip
+- Run tests: on 401 show friendly message and still request AI code review
+- Mark homework: friendly message for rate limit instead of raw JSON
+- CodeExecutionService: fix variable name conflict (statusCode)

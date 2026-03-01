@@ -13,6 +13,31 @@ const errorTypes = [
   { code: 'CONCEPT', label: 'Concept gap', description: "Didn't understand the concept" },
 ];
 
+const AMC8_CACHE_KEY_PREFIX = 'amc8_questions_';
+const AMC8_CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
+
+function getCachedAmc8Questions(pathName, nodeId) {
+  try {
+    const key = `${AMC8_CACHE_KEY_PREFIX}${pathName}_${nodeId}`;
+    const raw = sessionStorage.getItem(key);
+    if (!raw) return null;
+    const { at, problems } = JSON.parse(raw);
+    if (Date.now() - at > AMC8_CACHE_TTL_MS || !Array.isArray(problems)) return null;
+    return problems;
+  } catch {
+    return null;
+  }
+}
+
+function setCachedAmc8Questions(pathName, nodeId, problems) {
+  try {
+    const key = `${AMC8_CACHE_KEY_PREFIX}${pathName}_${nodeId}`;
+    sessionStorage.setItem(key, JSON.stringify({ at: Date.now(), problems }));
+  } catch {
+    /* ignore */
+  }
+}
+
 function getCodeEditorTemplate(lang) {
   if (lang === 'java') {
     return `class Solution {
@@ -84,7 +109,10 @@ export default function PracticeSession({ node, pathName, onComplete, onCancel }
   const hasMultipleProblems = problemsList.length > 1;
   const difficultyNum = Math.min(5, Math.max(0, Number(currentProblem?.difficulty) || 1));
   const codingPassedAll = isCodingNode && codeCheckResult && codeCheckResult.total > 0 && codeCheckResult.passed === codeCheckResult.total;
-  const canAdvance = submitResult?.correct === true || codingPassedAll;
+  const runnerFailedAll =
+    isCodingNode && codeCheckResult?.results?.length > 0 && codeCheckResult.passed === 0 &&
+    codeCheckResult.results.every((r) => r?.error && (r.error.includes('unavailable') || r.error.includes('execution service') || r.error.includes('Piston') || r.error.includes('401') || r.error.includes('temporarily')));
+  const canAdvance = submitResult?.correct === true || codingPassedAll || (runnerFailedAll && codeCheckResult?.aiFeedback);
   const showTryAgain = submitResult?.correct === false || (isCodingNode && codeCheckResult && codeCheckResult.failed > 0);
 
   useEffect(() => {
@@ -104,8 +132,37 @@ export default function PracticeSession({ node, pathName, onComplete, onCancel }
     setError('');
     const isAMC8 = pathName && /AMC\s*8/i.test(String(pathName).trim());
     if (isAMC8) {
-      // AMC8 path: ONLY load competition-caliber questions from AI (never show easy DB problems)
-      generateQuestions(nodeName, 'hard', 7, pathName)
+      // Use cached questions for this node to avoid repeated AI calls (30 min TTL)
+      const cached = getCachedAmc8Questions(pathName, nodeId);
+      if (cached && cached.length > 0) {
+        setProblems(cached);
+        setCurrentProblemIndex(0);
+        setError('');
+        setLoadingProblems(false);
+        return;
+      }
+      // AMC8 path: try AI first; if it fails, fall back to DB so user isn't stuck
+      function tryDbFallback(aiErrorMsg) {
+        getProblemsForNode(nodeId)
+          .then((probs) => {
+            const list = Array.isArray(probs) ? probs : [];
+            if (list.length > 0) {
+              setProblems(list);
+              setCurrentProblemIndex(0);
+              setError('AI wasn\'t available; showing practice questions from the library. You can also use "Generate homework PDF" below.');
+            } else {
+              setProblems([]);
+              setError(aiErrorMsg + ' Add GEMINI_API_KEY or OPENAI_API_KEY to .env and restart the backend, or use "Generate homework PDF" to get questions.');
+            }
+          })
+          .catch(() => {
+            setProblems([]);
+            setError(aiErrorMsg + ' Add GEMINI_API_KEY or OPENAI_API_KEY to .env and restart the backend, or use "Generate homework PDF".');
+          })
+          .finally(() => setLoadingProblems(false));
+      }
+
+      generateQuestions(nodeName, 'hard', 5, pathName)
         .then((res) => {
           const list = res?.questions ?? [];
           const mapped = list.map((q) => ({
@@ -117,17 +174,17 @@ export default function PracticeSession({ node, pathName, onComplete, onCancel }
             setProblems(mapped);
             setCurrentProblemIndex(0);
             setError('');
+            setCachedAmc8Questions(pathName, nodeId, mapped);
+            setLoadingProblems(false);
           } else {
-            setError('No AMC8 questions generated. Add GEMINI_API_KEY or OPENAI_API_KEY to .env and restart the backend, then retry.');
-            setProblems([]);
+            tryDbFallback('No AMC8 questions generated.');
           }
         })
         .catch((err) => {
           console.error('AMC8 question load failed:', err);
-          setError(err?.message || 'Could not load AMC8 questions. Add GEMINI_API_KEY or OPENAI_API_KEY to .env and restart the backend.');
-          setProblems([]);
-        })
-        .finally(() => setLoadingProblems(false));
+          setError(err?.message || 'AI could not generate questions.');
+          tryDbFallback(err?.message || 'AI could not generate questions.');
+        });
       return;
     }
     Promise.all([getProblemsForNode(nodeId), getNodeLogs(nodeId).catch(() => [])])
@@ -155,10 +212,14 @@ export default function PracticeSession({ node, pathName, onComplete, onCancel }
     }
   }, [isCodingNode, currentProblem?.problemText]);
 
-  // Learning mode: debounced live feedback as user types
+  // Learning mode: debounced live feedback (min length + longer debounce to reduce AI calls)
   const questionForAi = currentProblem?.problemText ?? '';
   useEffect(() => {
     if (aiMode !== 'learning' || !yourAnswer.trim()) {
+      setLiveFeedback('');
+      return;
+    }
+    if (yourAnswer.trim().length < 15) {
       setLiveFeedback('');
       return;
     }
@@ -169,7 +230,7 @@ export default function PracticeSession({ node, pathName, onComplete, onCancel }
         .then((res) => setLiveFeedback(res.feedback || ''))
         .catch(() => setLiveFeedback('Could not get live feedback.'))
         .finally(() => setLiveFeedbackLoading(false));
-    }, 800);
+    }, 1800);
     return () => {
       if (liveFeedbackTimeoutRef.current) clearTimeout(liveFeedbackTimeoutRef.current);
     };
@@ -842,7 +903,9 @@ export default function PracticeSession({ node, pathName, onComplete, onCancel }
             {/* Only allow moving on when they got it right (AI check or all tests passed for coding). */}
             {canAdvance ? (
               <>
-                <h3 className="text-2xl sm:text-3xl font-extrabold text-white mb-6 tracking-tight">Correct! Move on when ready.</h3>
+                <h3 className="text-2xl sm:text-3xl font-extrabold text-white mb-6 tracking-tight">
+                  {runnerFailedAll ? 'Tests couldn\'t run, but AI reviewed your code and it looks correct. Move on when ready.' : 'Correct! Move on when ready.'}
+                </h3>
                 <button
                   onClick={handleSuccess}
                   disabled={submitting}

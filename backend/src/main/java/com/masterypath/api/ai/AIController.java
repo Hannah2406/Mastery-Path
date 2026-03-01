@@ -218,8 +218,13 @@ public class AIController {
             headers.setContentDispositionFormData("attachment", filename);
             return new ResponseEntity<>(pdfBytes, headers, HttpStatus.OK);
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(Map.of("error", "Failed to create PDF: " + e.getMessage()));
+            String friendly = AIService.friendlyMarkingError(e.getMessage());
+            String errorMsg = friendly != null ? friendly : "Failed to create PDF. Try again later.";
+            HttpStatus status = (e.getMessage() != null && (e.getMessage().contains("429") || e.getMessage().toLowerCase().contains("quota") || e.getMessage().toLowerCase().contains("rate limit")))
+                ? HttpStatus.TOO_MANY_REQUESTS
+                : HttpStatus.INTERNAL_SERVER_ERROR;
+            return ResponseEntity.status(status)
+                .body(Map.of("error", errorMsg));
         }
     }
     

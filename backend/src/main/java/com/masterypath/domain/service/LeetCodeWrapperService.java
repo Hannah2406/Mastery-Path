@@ -56,12 +56,18 @@ public class LeetCodeWrapperService {
 
     private String buildJavaWrapper(String userCode, String className, String methodName, List<String> paramNames) {
         // Input format: one line per param. Line 1 = first param (e.g. "2,7,11,15" for int[]), line 2 = second (e.g. "9" for int)
-        // We use reflection to call the method generically
+        // We use reflection to call the method generically.
+        // Java allows only one public class per file, so we put imports first and make the solution class package-private.
         StringBuilder sb = new StringBuilder();
-        sb.append(userCode.trim());
-        if (!userCode.trim().endsWith("}")) sb.append("\n");
-        sb.append("\n\nimport java.util.*;\n");
-        sb.append("public class Main {\n");
+        sb.append("import java.util.*;\n\n");
+        // Make user's class package-private so we can have both Solution and public Main in one file
+        String code = userCode.trim();
+        if (className != null && !className.isEmpty()) {
+            code = code.replaceFirst("public\\s+class\\s+" + className + "\\b", "class " + className);
+        }
+        sb.append(code);
+        if (!code.endsWith("}")) sb.append("\n");
+        sb.append("\n\npublic class Main {\n");
         sb.append("    public static void main(String[] args) throws Exception {\n");
         sb.append("        Scanner sc = new Scanner(System.in);\n");
         sb.append("        java.util.List<String> lines = new java.util.ArrayList<>();\n");

@@ -127,7 +127,7 @@ export async function extractTextToPdf(file) {
     } catch {
       msg = await response.text() || msg;
     }
-    throw new Error(msg);
+    throw new Error(friendlyAiError(response.status, msg) || msg);
   }
   return response.blob();
 }
