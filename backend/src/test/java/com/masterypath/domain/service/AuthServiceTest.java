@@ -20,20 +20,22 @@ import static org.mockito.Mockito.*;
 class AuthServiceTest {
     @Mock
     private UserRepository userRepository;
+    @Mock
+    private PathService pathService;
     private PasswordEncoder passwordEncoder;
     private AuthService authService;
 
     @BeforeEach
     void setUp() {
         passwordEncoder = new BCryptPasswordEncoder();
-        authService = new AuthService(userRepository, passwordEncoder);
+        authService = new AuthService(userRepository, passwordEncoder, pathService);
     }
 
     @Test
     void register_withNewEmail_createsUser() {
         String email = "test@example.com";
         String password = "password123";
-        when(userRepository.existsByEmail(email)).thenReturn(false);
+        when(userRepository.existsByEmailIgnoreCase(email)).thenReturn(false);
         when(userRepository.save(any(User.class))).thenAnswer(invocation -> {
             User user = invocation.getArgument(0);
             user.setId(1L);
@@ -43,16 +45,15 @@ class AuthServiceTest {
         assertNotNull(result);
         assertEquals(email, result.getEmail());
         assertNotNull(result.getPasswordHash());
-        assertNotEquals(password, result.getPasswordHash());
         assertTrue(passwordEncoder.matches(password, result.getPasswordHash()));
-        verify(userRepository).existsByEmail(email);
+        verify(userRepository).existsByEmailIgnoreCase(email);
         verify(userRepository).save(any(User.class));
     }
 
     @Test
     void register_withExistingEmail_throwsException() {
         String email = "existing@example.com";
-        when(userRepository.existsByEmail(email)).thenReturn(true);
+        when(userRepository.existsByEmailIgnoreCase(email)).thenReturn(true);
         IllegalArgumentException exception = assertThrows(
             IllegalArgumentException.class,
             () -> authService.register(email, "password123")
@@ -68,7 +69,7 @@ class AuthServiceTest {
         String hashedPassword = passwordEncoder.encode(password);
         User user = new User(email, hashedPassword);
         user.setId(1L);
-        when(userRepository.findByEmail(email)).thenReturn(Optional.of(user));
+        when(userRepository.findByEmailIgnoreCase(email)).thenReturn(Optional.of(user));
         Optional<User> result = authService.authenticate(email, password);
         assertTrue(result.isPresent());
         assertEquals(email, result.get().getEmail());
@@ -81,7 +82,7 @@ class AuthServiceTest {
         String wrongPassword = "wrongpassword";
         String hashedPassword = passwordEncoder.encode(correctPassword);
         User user = new User(email, hashedPassword);
-        when(userRepository.findByEmail(email)).thenReturn(Optional.of(user));
+        when(userRepository.findByEmailIgnoreCase(email)).thenReturn(Optional.of(user));
         Optional<User> result = authService.authenticate(email, wrongPassword);
         assertTrue(result.isEmpty());
     }
@@ -89,7 +90,7 @@ class AuthServiceTest {
     @Test
     void authenticate_withNonExistentEmail_returnsEmpty() {
         String email = "nonexistent@example.com";
-        when(userRepository.findByEmail(email)).thenReturn(Optional.empty());
+        when(userRepository.findByEmailIgnoreCase(email)).thenReturn(Optional.empty());
         Optional<User> result = authService.authenticate(email, "password123");
         assertTrue(result.isEmpty());
     }

@@ -3,9 +3,12 @@ package com.masterypath.api.paths;
 import com.masterypath.api.paths.dto.*;
 import com.masterypath.domain.model.Path;
 import com.masterypath.domain.model.Node;
+import com.masterypath.domain.model.Problem;
 import com.masterypath.domain.model.User;
 import com.masterypath.domain.model.UserSkill;
+import com.masterypath.domain.repo.NodeRepository;
 import com.masterypath.domain.repo.ProblemRepository;
+import com.masterypath.domain.service.AIService;
 import com.masterypath.domain.service.AuthService;
 import com.masterypath.domain.service.PathService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -26,11 +29,16 @@ public class PathController {
 
     private final PathService pathService;
     private final ProblemRepository problemRepository;
+    private final NodeRepository nodeRepository;
+    private final AIService aiService;
     private final AuthService authService;
 
-    public PathController(PathService pathService, ProblemRepository problemRepository, AuthService authService) {
+    public PathController(PathService pathService, ProblemRepository problemRepository,
+                          NodeRepository nodeRepository, AIService aiService, AuthService authService) {
         this.pathService = pathService;
         this.problemRepository = problemRepository;
+        this.nodeRepository = nodeRepository;
+        this.aiService = aiService;
         this.authService = authService;
     }
 
@@ -55,6 +63,22 @@ public class PathController {
         return ResponseEntity.status(HttpStatus.CREATED).body(PathResponse.from(path));
     }
 
+    /** Create a path from AI-generated suggestions (name, description, list of nodes). Path will contain real nodes in order. */
+    @PostMapping("/from-ai")
+    public ResponseEntity<?> createPathFromAI(@Valid @RequestBody CreatePathFromAIRequest request, HttpServletRequest httpRequest) {
+        User user = getCurrentUser(httpRequest);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Not authenticated"));
+        }
+        try {
+            Path path = pathService.createPathFromAISuggestions(
+                user, request.getName(), request.getDescription(), request.getSuggestions());
+            return ResponseEntity.status(HttpStatus.CREATED).body(PathResponse.from(path));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
     @GetMapping("/nodes/{nodeId}/problems")
     public ResponseEntity<?> getProblemsForNode(@PathVariable Long nodeId) {
         List<ProblemResponse> problems = problemRepository.findByNodeIdOrderByDifficultyAsc(nodeId)
@@ -62,6 +86,48 @@ public class PathController {
             .map(ProblemResponse::from)
             .collect(Collectors.toList());
         return ResponseEntity.ok(problems);
+    }
+
+    /**
+     * Generate practice questions for this node via AI (AMC 8 / Blind 75 style based on path name) and save them.
+     * Use when a node has no problems so each node gets questions like Blind 75 or AMC 8.
+     */
+    @PostMapping("/nodes/{nodeId}/generate-questions")
+    public ResponseEntity<?> generateAndSaveQuestionsForNode(
+            @PathVariable Long nodeId,
+            @RequestBody(required = false) GenerateNodeQuestionsRequest body,
+            HttpServletRequest request) {
+        User user = getCurrentUser(request);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Not authenticated"));
+        }
+        if (!aiService.isAiConfigured()) {
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(Map.of("error", "AI is not configured. Add GEMINI_API_KEY or OPENAI_API_KEY to .env and restart the backend."));
+        }
+        Node node = nodeRepository.findById(nodeId).orElse(null);
+        if (node == null) {
+            return ResponseEntity.notFound().build();
+        }
+        String pathName = body != null && body.getPathName() != null ? body.getPathName() : null;
+        int count = body != null && body.getCount() != null && body.getCount() > 0 ? body.getCount() : 5;
+        String difficulty = body != null && body.getDifficulty() != null && !body.getDifficulty().isBlank()
+            ? body.getDifficulty() : "intermediate";
+        String topic = node.getName() + (node.getDescription() != null && !node.getDescription().isBlank()
+            ? " " + node.getDescription() : "");
+        try {
+            List<AIService.QuestionSuggestion> suggestions = aiService.generateQuestions(topic, difficulty, count, pathName);
+            List<Problem> saved = new java.util.ArrayList<>();
+            for (AIService.QuestionSuggestion q : suggestions) {
+                Problem p = new Problem(node, q.getProblemText(), q.getSolutionText(), q.getDifficulty());
+                saved.add(problemRepository.save(p));
+            }
+            List<ProblemResponse> response = saved.stream().map(ProblemResponse::from).collect(Collectors.toList());
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of("error", "Failed to generate questions: " + e.getMessage()));
+        }
     }
 
     @GetMapping("/{pathId}")

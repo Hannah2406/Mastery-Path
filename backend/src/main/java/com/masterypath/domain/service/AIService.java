@@ -63,18 +63,20 @@ public class AIService {
      */
     public List<PathNodeSuggestion> generatePath(String description, String difficulty, Integer estimatedTimeMinutes) {
         if (!aiEnabled || !hasAiKey()) {
-            log.warn("AI is disabled or API key not configured. Returning default suggestions.");
-            return getDefaultPathSuggestions(description);
+            log.warn("AI is disabled or API key not configured. Returning empty so user sees setup message.");
+            return List.of();
         }
         
-        try {
-            String prompt = buildPathGenerationPrompt(description, difficulty, estimatedTimeMinutes);
-            String response = callAi(prompt);
-            return parsePathResponse(response);
-        } catch (Exception e) {
-            log.error("Failed to generate path with AI", e);
-            return getDefaultPathSuggestions(description);
+        String prompt = buildPathGenerationPrompt(description, difficulty, estimatedTimeMinutes);
+        String response = callAi(prompt, 8192);
+        List<PathNodeSuggestion> suggestions = parsePathResponse(response);
+        if (suggestions.isEmpty()) {
+            String preview = response != null && response.length() > 800 ? response.substring(0, 800) + "..." : (response != null ? response : "");
+            log.warn("AI returned no path nodes. Response preview: {}", preview);
+            throw new RuntimeException("AI returned no valid nodes. Try a different topic or try again. If this keeps happening, check backend logs for the response preview.");
         }
+        log.info("Path generated with {} nodes for topic: {}", suggestions.size(), description);
+        return suggestions;
     }
     
     /**
@@ -610,21 +612,36 @@ public class AIService {
 
     /** Public check for controllers to return 503 when AI is not configured. */
     public boolean isAiConfigured() {
-        return aiEnabled && hasAiKey();
+        boolean configured = aiEnabled && hasAiKey();
+        if (!configured) {
+            log.warn("AI not configured: aiEnabled={}, geminiApiKeyPresent={}, openaiApiKeyPresent={}",
+                aiEnabled,
+                geminiApiKey != null && !geminiApiKey.isBlank(),
+                openaiApiKey != null && !openaiApiKey.isBlank());
+        }
+        return configured;
     }
 
     /** Use Gemini if key is set, otherwise OpenAI. */
     private String callAi(String prompt) {
+        return callAi(prompt, 4096);
+    }
+
+    private String callAi(String prompt, int maxTokens) {
         if (geminiApiKey != null && !geminiApiKey.isBlank()) {
-            return callGemini(prompt);
+            return callGemini(prompt, maxTokens);
         }
         if (openaiApiKey != null && !openaiApiKey.isBlank()) {
-            return callOpenAI(prompt);
+            return callOpenAI(prompt, maxTokens);
         }
         throw new RuntimeException("No AI API key configured. Set GEMINI_API_KEY or OPENAI_API_KEY.");
     }
 
     private String callGemini(String prompt) {
+        return callGemini(prompt, 4096);
+    }
+
+    private String callGemini(String prompt, int maxOutputTokens) {
         String url = "https://generativelanguage.googleapis.com/v1beta/models/" + geminiModel + ":generateContent?key=" + geminiApiKey;
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
@@ -635,7 +652,7 @@ public class AIService {
         body.put("contents", List.of(contents));
         Map<String, Object> genConfig = new HashMap<>();
         genConfig.put("temperature", 0.7);
-        genConfig.put("maxOutputTokens", 2000);
+        genConfig.put("maxOutputTokens", Math.max(2000, maxOutputTokens));
         body.put("generationConfig", genConfig);
 
         HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
@@ -649,11 +666,27 @@ public class AIService {
             JsonNode json = objectMapper.readTree(response.getBody());
             JsonNode candidates = json.get("candidates");
             if (candidates == null || !candidates.isArray() || candidates.isEmpty()) {
-                throw new RuntimeException("Gemini returned no candidates");
+                String reason = json.has("promptFeedback") ? json.get("promptFeedback").toString() : "";
+                throw new RuntimeException("Gemini returned no candidates. " + (reason.isEmpty() ? "Try again." : reason));
             }
-            return candidates.get(0).get("content").get("parts").get(0).get("text").asText();
+            JsonNode first = candidates.get(0);
+            JsonNode content = first != null ? first.get("content") : null;
+            if (content == null) throw new RuntimeException("Gemini returned empty content. Try again.");
+            JsonNode parts = content.get("parts");
+            if (parts == null || !parts.isArray()) throw new RuntimeException("Gemini returned no parts. Try again.");
+            StringBuilder text = new StringBuilder();
+            for (JsonNode part : parts) {
+                if (part == null) continue;
+                JsonNode t = part.get("text");
+                if (t != null && t.isTextual()) text.append(t.asText());
+            }
+            String result = text.toString().trim();
+            if (result.isEmpty()) throw new RuntimeException("Gemini returned no text. Try again or a different topic.");
+            return result;
+        } catch (RuntimeException e) {
+            throw e;
         } catch (Exception e) {
-            throw new RuntimeException("Failed to parse Gemini response", e);
+            throw new RuntimeException("Failed to parse Gemini response: " + e.getMessage(), e);
         }
     }
 
@@ -669,6 +702,10 @@ public class AIService {
     }
 
     private String callOpenAI(String prompt) {
+        return callOpenAI(prompt, 4096);
+    }
+
+    private String callOpenAI(String prompt, int maxTokens) {
         String url = openaiBaseUrl.replaceAll("/$", "") + CHAT_PATH;
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
@@ -681,7 +718,7 @@ public class AIService {
             Map.of("role", "user", "content", prompt)
         ));
         requestBody.put("temperature", 0.7);
-        requestBody.put("max_tokens", 2000);
+        requestBody.put("max_tokens", Math.max(2000, maxTokens));
 
         HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
         ResponseEntity<String> response = restTemplate.postForEntity(url, request, String.class);
@@ -699,26 +736,40 @@ public class AIService {
     }
     
     private String buildPathGenerationPrompt(String description, String difficulty, Integer estimatedTimeMinutes) {
+        String diff = difficulty != null && !difficulty.isBlank() ? difficulty.trim().toLowerCase() : "intermediate";
         return String.format("""
-            Generate a structured learning path based on this description: "%s"
-            
-            Difficulty: %s
-            Estimated time: %d minutes
-            
-            Return a JSON array of learning nodes/skills. Each node should have:
-            - name: short skill name (e.g., "Two Sum", "Basic Arithmetic")
-            - description: what this skill teaches
-            - category: category name (e.g., "Array", "Algebra")
-            
-            Format:
+            The user has requested a learning path for: "%s"
+
+            Accept this topic as-is. Create a LEARNING PATH of 8-12 UNITS. Each unit is one node. Practice is generated from the topic—do not include external links.
+
+            STYLE: Use real curriculum-style unit names. Avoid generic labels like "Introduction", "Overview", "Core Concepts", "Basics", "Practice".
+
+            RULES:
+            1) UNITS: 8-12 specific units. Match subject and level (e.g. school, competition, university).
+            2) DIFFICULTY: Path level is %s. Put foundation first, then harder material.
+            3) PREREQUISITES (same-level / branching): Use a "prerequisites" array for each unit. It lists the 0-based indices of units that must be completed before this one. Units with the same prerequisites are at the same level (can be done in any order). Examples:
+               - First unit(s) have no prereqs: "prerequisites": []
+               - Unit 1 and 2 both depend only on unit 0: give unit 1 "prerequisites": [0] and unit 2 "prerequisites": [0] (so they are same level).
+               - Unit 3 depends on both 1 and 2: "prerequisites": [1, 2]
+               - Linear chain: unit 0 has [], unit 1 has [0], unit 2 has [1], unit 3 has [2].
+            4) LENGTH: 8-12 units.
+
+            Return ONLY a JSON array. Each element is an object with these keys:
+            - name: unit title (string)
+            - description: 2-4 sentences on what the unit covers (string)
+            - category: subject area (string)
+            - prerequisites: array of 0-based indices of units that must be done first (e.g. [] or [0] or [0, 1]). Do not include external links.
+
+            Example:
             [
-              {"name": "Skill 1", "description": "...", "category": "Category1"},
-              {"name": "Skill 2", "description": "...", "category": "Category2"}
+              {"name": "Limits and Continuity", "description": "...", "category": "Calculus", "prerequisites": []},
+              {"name": "Derivatives", "description": "...", "category": "Calculus", "prerequisites": [0]},
+              {"name": "Integrals", "description": "...", "category": "Calculus", "prerequisites": [0]},
+              {"name": "Applications", "description": "...", "category": "Calculus", "prerequisites": [1, 2]}
             ]
-            
-            Generate 8-15 skills appropriate for the difficulty level. Order them logically (basics first).
-            """, description, difficulty != null ? difficulty : "intermediate", 
-            estimatedTimeMinutes != null ? estimatedTimeMinutes : 600);
+
+            Output the JSON array only, starting with [ and ending with ].
+            """, description, diff);
     }
     
     private String buildQuestionGenerationPrompt(String topic, String difficulty, int count) {
@@ -810,22 +861,66 @@ public class AIService {
     
     private List<PathNodeSuggestion> parsePathResponse(String response) {
         try {
-            // Try to extract JSON array from response
             String jsonArray = extractJsonArray(response);
             JsonNode array = objectMapper.readTree(jsonArray);
+            if (!array.isArray()) return List.of();
             List<PathNodeSuggestion> suggestions = new ArrayList<>();
+            int index = 0;
             for (JsonNode node : array) {
-                suggestions.add(new PathNodeSuggestion(
-                    node.get("name").asText(),
-                    node.has("description") ? node.get("description").asText() : "",
-                    node.has("category") ? node.get("category").asText() : "General"
-                ));
+                if (!node.isObject()) continue;
+                String name = getTextFromNode(node, "name", "title", "unit", "node");
+                if (name == null || name.isBlank()) continue;
+                String description = getTextFromNode(node, "description", "desc", "summary");
+                if (description == null) description = "";
+                String category = getTextFromNode(node, "category", "subject", "topic");
+                if (category == null || category.isBlank()) category = "General";
+                List<Integer> prerequisites = getPrerequisitesFromNode(node, index);
+                suggestions.add(new PathNodeSuggestion(name, description.trim(), category.trim(), null, prerequisites));
+                index++;
             }
             return suggestions;
         } catch (Exception e) {
             log.error("Failed to parse path response", e);
-            return getDefaultPathSuggestions("");
+            return List.of();
         }
+    }
+
+    /** Parse prerequisites array (0-based indices). If missing or invalid, use linear: [index-1] when index > 0. */
+    private static List<Integer> getPrerequisitesFromNode(JsonNode node, int currentIndex) {
+        for (Iterator<String> it = node.fieldNames(); it.hasNext(); ) {
+            String field = it.next();
+            if (!"prerequisites".equalsIgnoreCase(field) && !"prereqs".equalsIgnoreCase(field)) continue;
+            JsonNode val = node.get(field);
+            if (val == null || !val.isArray()) break;
+            List<Integer> out = new ArrayList<>();
+            for (JsonNode el : val) {
+                if (el != null && el.isNumber()) {
+                    int i = el.asInt();
+                    if (i >= 0 && i < currentIndex) out.add(i);
+                }
+            }
+            return out;
+        }
+        return currentIndex > 0 ? List.of(currentIndex - 1) : List.of();
+    }
+
+    /** Get first text value from node for any of the given keys (case-insensitive). */
+    private static String getTextFromNode(JsonNode node, String... keys) {
+        if (node == null || !node.isObject()) return null;
+        for (String key : keys) {
+            for (Iterator<String> it = node.fieldNames(); it.hasNext(); ) {
+                String field = it.next();
+                if (field.equalsIgnoreCase(key)) {
+                    JsonNode val = node.get(field);
+                    if (val != null && val.isTextual()) {
+                        String s = val.asText();
+                        return s == null ? null : s.trim();
+                    }
+                    break;
+                }
+            }
+        }
+        return null;
     }
     
     private List<QuestionSuggestion> parseQuestionResponse(String response) {
@@ -848,38 +943,65 @@ public class AIService {
     }
     
     private String extractJsonArray(String response) {
-        // Try to find JSON array in response (may have markdown code blocks)
-        int start = response.indexOf('[');
-        int end = response.lastIndexOf(']') + 1;
-        if (start >= 0 && end > start) {
-            return response.substring(start, end);
+        if (response == null || response.isBlank()) return "[]";
+        String normalized = response.trim();
+        // Strip markdown code block if present (e.g. ```json\n...\n```)
+        if (normalized.startsWith("```")) {
+            int start = normalized.indexOf('\n');
+            if (start > 0) normalized = normalized.substring(start + 1);
+            int end = normalized.lastIndexOf("```");
+            if (end > 0) normalized = normalized.substring(0, end).trim();
         }
+        // Try to find JSON array: first [ to last ]
+        int start = normalized.indexOf('[');
+        int end = normalized.lastIndexOf(']') + 1;
+        if (start >= 0 && end > start) {
+            String candidate = normalized.substring(start, end);
+            try {
+                JsonNode parsed = objectMapper.readTree(candidate);
+                if (parsed.isArray()) return candidate;
+            } catch (Exception ignored) { /* not valid JSON */ }
+            // Possibly truncated: try closing the array
+            if (!candidate.trim().endsWith("]")) {
+                try {
+                    String repaired = candidate.trim() + "]";
+                    JsonNode parsed = objectMapper.readTree(repaired);
+                    if (parsed.isArray()) return repaired;
+                } catch (Exception ignored) { }
+            }
+        }
+        // Maybe response is an object with path/units/nodes/suggestions/items
+        try {
+            JsonNode root = objectMapper.readTree(normalized);
+            if (root.isObject()) {
+                for (String key : List.of("path", "units", "nodes", "suggestions", "items", "steps", "chapters")) {
+                    if (root.has(key) && root.get(key).isArray()) return objectMapper.writeValueAsString(root.get(key));
+                }
+            }
+        } catch (Exception ignored) { /* not a wrapper object */ }
         return "[]";
-    }
-    
-    private List<PathNodeSuggestion> getDefaultPathSuggestions(String description) {
-        // Fallback: return some generic suggestions
-        return List.of(
-            new PathNodeSuggestion("Introduction", "Get started with the basics", "General"),
-            new PathNodeSuggestion("Core Concepts", "Learn fundamental concepts", "General"),
-            new PathNodeSuggestion("Practice", "Apply what you learned", "General")
-        );
     }
     
     public static class PathNodeSuggestion {
         private final String name;
         private final String description;
         private final String category;
-        
-        public PathNodeSuggestion(String name, String description, String category) {
+        private final String resourceUrl;
+        private final List<Integer> prerequisites;
+
+        public PathNodeSuggestion(String name, String description, String category, String resourceUrl, List<Integer> prerequisites) {
             this.name = name;
             this.description = description;
             this.category = category;
+            this.resourceUrl = resourceUrl;
+            this.prerequisites = prerequisites != null ? prerequisites : List.of();
         }
-        
+
         public String getName() { return name; }
         public String getDescription() { return description; }
         public String getCategory() { return category; }
+        public String getResourceUrl() { return resourceUrl; }
+        public List<Integer> getPrerequisites() { return prerequisites; }
     }
     
     /**

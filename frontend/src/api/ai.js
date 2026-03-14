@@ -174,6 +174,9 @@ function friendlyAiError(status, message) {
   if (status === 429) return 'AI rate limit reached. Please wait a minute and try again.';
   if (status === 503) return 'AI is not set up. Add GEMINI_API_KEY or OPENAI_API_KEY to your .env file (see .env.example) and restart the backend. Get a free Gemini key: https://aistudio.google.com/app/apikey';
   const m = (message || '').toLowerCase();
+  if (m.includes('api key invalid or not authorized')) {
+    return 'Your AI API key is invalid or not authorized. Generate a new key in Google AI Studio or your OpenAI dashboard, update GEMINI_API_KEY or OPENAI_API_KEY in your .env file, then run ./stop-all.sh and ./start-all.sh.';
+  }
   if (m.includes('quota') || m.includes('rate limit') || m.includes('resource_exhausted')) {
     return 'AI rate limit reached. Please wait a minute and try again.';
   }

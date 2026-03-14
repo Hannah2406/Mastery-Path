@@ -1,6 +1,7 @@
 services:
   postgres:
     image: postgres:16-alpine
+    platform: linux/arm64   # Use native image on Apple Silicon (M1/M2/M3/M4); remove if on Intel Mac
     container_name: masterypath-db
     environment:
       POSTGRES_DB: masterypath

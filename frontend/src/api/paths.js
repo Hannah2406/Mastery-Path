@@ -12,6 +12,19 @@ export async function createPath(body) {
   return data;
 }
 
+/** Create a path from AI-generated suggestions (name, description, suggestions). Path will contain nodes in order. */
+export async function createPathFromAI(body) {
+  const response = await fetch(`${API_BASE}/from-ai`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify(body),
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error || data.message || 'Failed to create path from AI');
+  return data;
+}
+
 export async function getPaths() {
   try {
     const response = await fetch(API_BASE, {

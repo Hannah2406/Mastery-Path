@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { createLog } from '../../api/logs';
-import { getProblemsForNode } from '../../api/problems';
+import { getProblemsForNode, generateAndSaveQuestionsForNode } from '../../api/problems';
 import { getNodeLogs } from '../../api/history';
-import { generateQuestions, generateSimilarQuestions, generateHomeworkPdf, checkAnswer, getLiveFeedback, checkCode } from '../../api/ai';
+import { generateSimilarQuestions, checkAnswer, getLiveFeedback, checkCode } from '../../api/ai';
 import FileUploadModal from './FileUploadModal';
 import DrawingCanvas from './DrawingCanvas';
 import CodeEditor from './CodeEditor';
@@ -12,31 +12,6 @@ const errorTypes = [
   { code: 'FORGOT', label: 'Forgot approach', description: 'Knew it before but forgot' },
   { code: 'CONCEPT', label: 'Concept gap', description: "Didn't understand the concept" },
 ];
-
-const AMC8_CACHE_KEY_PREFIX = 'amc8_questions_';
-const AMC8_CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
-
-function getCachedAmc8Questions(pathName, nodeId) {
-  try {
-    const key = `${AMC8_CACHE_KEY_PREFIX}${pathName}_${nodeId}`;
-    const raw = sessionStorage.getItem(key);
-    if (!raw) return null;
-    const { at, problems } = JSON.parse(raw);
-    if (Date.now() - at > AMC8_CACHE_TTL_MS || !Array.isArray(problems)) return null;
-    return problems;
-  } catch {
-    return null;
-  }
-}
-
-function setCachedAmc8Questions(pathName, nodeId, problems) {
-  try {
-    const key = `${AMC8_CACHE_KEY_PREFIX}${pathName}_${nodeId}`;
-    sessionStorage.setItem(key, JSON.stringify({ at: Date.now(), problems }));
-  } catch {
-    /* ignore */
-  }
-}
 
 function getCodeEditorTemplate(lang) {
   if (lang === 'java') {
@@ -71,8 +46,6 @@ export default function PracticeSession({ node, pathName, onComplete, onCancel }
   const [loadingProblems, setLoadingProblems] = useState(true);
   const [showSolution, setShowSolution] = useState(false);
   const [generatingQuestions, setGeneratingQuestions] = useState(false);
-  const [generatingPdf, setGeneratingPdf] = useState(false);
-  const [generateDifficulty, setGenerateDifficulty] = useState('intermediate');
   const [showFileUpload, setShowFileUpload] = useState(false);
   const [showDrawingCanvas, setShowDrawingCanvas] = useState(false);
   // AI answer area: two modes
@@ -130,75 +103,42 @@ export default function PracticeSession({ node, pathName, onComplete, onCancel }
     }
     setLoadingProblems(true);
     setError('');
-    const isAMC8 = pathName && /AMC\s*8/i.test(String(pathName).trim());
-    if (isAMC8) {
-      // Use cached questions for this node to avoid repeated AI calls (30 min TTL)
-      const cached = getCachedAmc8Questions(pathName, nodeId);
-      if (cached && cached.length > 0) {
-        setProblems(cached);
-        setCurrentProblemIndex(0);
-        setError('');
-        setLoadingProblems(false);
-        return;
-      }
-      // AMC8 path: try AI first; if it fails, fall back to DB so user isn't stuck
-      function tryDbFallback(aiErrorMsg) {
-        getProblemsForNode(nodeId)
-          .then((probs) => {
-            const list = Array.isArray(probs) ? probs : [];
-            if (list.length > 0) {
-              setProblems(list);
-              setCurrentProblemIndex(0);
-              setError('AI wasn\'t available; showing practice questions from the library. You can also use "Generate homework PDF" below.');
-            } else {
-              setProblems([]);
-              setError(aiErrorMsg + ' Add GEMINI_API_KEY or OPENAI_API_KEY to .env and restart the backend, or use "Generate homework PDF" to get questions.');
-            }
-          })
-          .catch(() => {
-            setProblems([]);
-            setError(aiErrorMsg + ' Add GEMINI_API_KEY or OPENAI_API_KEY to .env and restart the backend, or use "Generate homework PDF".');
-          })
-          .finally(() => setLoadingProblems(false));
-      }
-
-      generateQuestions(nodeName, 'hard', 5, pathName)
-        .then((res) => {
-          const list = res?.questions ?? [];
-          const mapped = list.map((q) => ({
-            problemText: q.problemText ?? q.problem_text,
-            solutionText: q.solutionText ?? q.solution_text ?? '',
-            difficulty: q.difficulty ?? 4,
-          }));
-          if (mapped.length > 0) {
+    const difficulty = pathName && /AMC|competition|math/i.test(String(pathName)) ? 'hard' : 'intermediate';
+    getProblemsForNode(nodeId)
+      .then((probs) => {
+        const list = Array.isArray(probs) ? probs : [];
+        if (list.length > 0) {
+          setProblems(list);
+          setCurrentProblemIndex(0);
+          setError('');
+          getNodeLogs(nodeId).catch(() => []).then((logs) => {
+            const successCount = Array.isArray(logs) ? logs.filter((l) => l.success).length : 0;
+            setCurrentProblemIndex(list.length === 0 ? 0 : Math.min(successCount, list.length - 1));
+          });
+          setLoadingProblems(false);
+          return;
+        }
+        // No problems for this node: generate and save (AMC 8 / Blind 75 style from path name)
+        return generateAndSaveQuestionsForNode(nodeId, { pathName: pathName || undefined, count: 5, difficulty })
+          .then((saved) => {
+            const mapped = (saved || []).map((p) => ({
+              problemText: p.problemText ?? p.problem_text,
+              solutionText: p.solutionText ?? p.solution_text ?? '',
+              difficulty: p.difficulty ?? 2,
+            }));
             setProblems(mapped);
             setCurrentProblemIndex(0);
             setError('');
-            setCachedAmc8Questions(pathName, nodeId, mapped);
             setLoadingProblems(false);
-          } else {
-            tryDbFallback('No AMC8 questions generated.');
-          }
-        })
-        .catch((err) => {
-          console.error('AMC8 question load failed:', err);
-          setError(err?.message || 'AI could not generate questions.');
-          tryDbFallback(err?.message || 'AI could not generate questions.');
-        });
-      return;
-    }
-    Promise.all([getProblemsForNode(nodeId), getNodeLogs(nodeId).catch(() => [])])
-      .then(([probs, logs]) => {
-        const list = Array.isArray(probs) ? probs : [];
-        setProblems(list);
-        const successCount = Array.isArray(logs) ? logs.filter((l) => l.success).length : 0;
-        const startIndex = list.length === 0 ? 0 : Math.min(successCount, list.length - 1);
-        setCurrentProblemIndex(startIndex);
+          });
+      })
+      .then((maybeNext) => {
+        if (maybeNext !== undefined) return;
         setLoadingProblems(false);
       })
-      .catch(err => {
-        console.error('Failed to load problems:', err);
-        setError(`Failed to load problems: ${err.message}`);
+      .catch((err) => {
+        console.error('Failed to load or generate problems:', err);
+        setError(err?.message || 'Failed to load problems. Add GEMINI_API_KEY or OPENAI_API_KEY to .env to generate questions.');
         setProblems([]);
         setLoadingProblems(false);
       });
@@ -396,96 +336,20 @@ export default function PracticeSession({ node, pathName, onComplete, onCancel }
         </div>
       ) : problemsList.length === 0 && !isCodingNode ? (
         <div className="text-center py-6 space-y-4">
-          <p className="text-slate-400 text-base sm:text-lg font-medium">No practice questions yet. Generate a homework PDF for this topic, or open the external link below.</p>
-          <p className="text-slate-500 text-sm">PDF uses AI — add GEMINI_API_KEY or OPENAI_API_KEY to <code className="bg-slate-700 px-1 rounded">.env</code> and restart the backend if the button fails.</p>
-          <div className="flex flex-wrap justify-center gap-3">
-            <button
-              type="button"
-              onClick={async () => {
-                setGeneratingPdf(true);
-                setError('');
-                try {
-                  const blob = await generateHomeworkPdf(nodeName, generateDifficulty, 5, pathName);
-                  const url = URL.createObjectURL(blob);
-                  const a = document.createElement('a');
-                  a.href = url;
-                  a.download = `homework-${nodeName.replace(/\s+/g, '-')}.pdf`;
-                  a.style.display = 'none';
-                  document.body.appendChild(a);
-                  a.click();
-                  setTimeout(() => {
-                    document.body.removeChild(a);
-                    URL.revokeObjectURL(url);
-                  }, 200);
-                } catch (e) {
-                  setError(e.message || 'Failed to generate PDF');
-                } finally {
-                  setGeneratingPdf(false);
-                }
-              }}
-              disabled={generatingPdf}
-              className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-600 text-white rounded-xl font-bold text-base transition-colors"
+          <p className="text-slate-400 text-base sm:text-lg font-medium">No practice questions for this node yet. Pick another node on your path to practice, or use the link below if available.</p>
+          {(rawNode?.externalUrl ?? node?.externalUrl) && (rawNode?.status ?? node?.status) !== 'LOCKED' && (
+            <a
+              href={rawNode?.externalUrl ?? node?.externalUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-orange-600 hover:bg-orange-500 text-white rounded-xl font-medium transition-colors"
             >
-              {generatingPdf ? 'Generating PDF...' : '📄 Generate homework PDF'}
-            </button>
-            {(rawNode?.externalUrl ?? node?.externalUrl) && (rawNode?.status ?? node?.status) !== 'LOCKED' && (
-              <a
-                href={rawNode?.externalUrl ?? node?.externalUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-6 py-3 bg-orange-600 hover:bg-orange-500 text-white rounded-xl font-medium transition-colors"
-              >
-                {((rawNode?.externalUrl ?? node?.externalUrl) || '').includes('leetcode.com') ? 'Open on LeetCode ↗' : 'Open link ↗'}
-              </a>
-            )}
-          </div>
-          <div className="flex justify-center gap-2 pt-2">
-            <span className="text-slate-500 text-sm font-medium">PDF difficulty:</span>
-            {['easy', 'intermediate', 'hard'].map((d) => (
-              <button
-                key={d}
-                type="button"
-                onClick={() => setGenerateDifficulty(d)}
-                className={`px-3 py-1 rounded-lg text-sm font-bold capitalize ${generateDifficulty === d ? 'bg-indigo-600 text-white' : 'bg-slate-700 text-slate-400 hover:text-white'}`}
-              >
-                {d}
-              </button>
-            ))}
-          </div>
+              {((rawNode?.externalUrl ?? node?.externalUrl) || '').includes('leetcode.com') ? 'Open on LeetCode ↗' : 'Open link ↗'}
+            </a>
+          )}
         </div>
       ) : isCodingNode && problemsList.length === 0 ? (
         <div className="mb-8">
-          <div className="flex flex-wrap justify-center gap-2 mb-4">
-            <button
-              type="button"
-              onClick={async () => {
-                setGeneratingPdf(true);
-                setError('');
-                try {
-                  const blob = await generateHomeworkPdf(nodeName, generateDifficulty, 5, pathName);
-                  const url = URL.createObjectURL(blob);
-                  const a = document.createElement('a');
-                  a.href = url;
-                  a.download = `homework-${nodeName.replace(/\s+/g, '-')}.pdf`;
-                  a.style.display = 'none';
-                  document.body.appendChild(a);
-                  a.click();
-                  setTimeout(() => {
-                    document.body.removeChild(a);
-                    URL.revokeObjectURL(url);
-                  }, 200);
-                } catch (e) {
-                  setError(e.message || 'Failed to generate PDF');
-                } finally {
-                  setGeneratingPdf(false);
-                }
-              }}
-              disabled={generatingPdf}
-              className="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-600 text-white rounded-xl font-bold text-sm transition-colors"
-            >
-              {generatingPdf ? 'Generating...' : '📄 Generate homework PDF'}
-            </button>
-          </div>
           <div className="bg-slate-700/50 rounded-xl p-6 sm:p-7 border border-slate-600 mb-4">
             <h3 className="text-lg sm:text-xl font-bold text-white mb-2">{nodeName}</h3>
             <p className="text-slate-200 leading-relaxed font-medium">{nodeDescription || 'Solve this coding problem. Write your solution below and run tests.'}</p>
@@ -594,35 +458,6 @@ export default function PracticeSession({ node, pathName, onComplete, onCancel }
                   Problem {safeIndex + 1} of {problemsList.length}
                 </span>
               )}
-              <button
-                type="button"
-                onClick={async () => {
-                  setGeneratingPdf(true);
-                  setError('');
-                  try {
-                    const blob = await generateHomeworkPdf(nodeName, generateDifficulty, 5, pathName);
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = `homework-${nodeName.replace(/\s+/g, '-')}.pdf`;
-                    a.style.display = 'none';
-                    document.body.appendChild(a);
-                    a.click();
-                    setTimeout(() => {
-                      document.body.removeChild(a);
-                      URL.revokeObjectURL(url);
-                    }, 200);
-                  } catch (e) {
-                    setError(e.message || 'Failed to generate PDF');
-                  } finally {
-                    setGeneratingPdf(false);
-                  }
-                }}
-                disabled={generatingPdf}
-                className="text-sm font-bold text-emerald-400 hover:text-emerald-300 disabled:text-slate-500"
-              >
-                {generatingPdf ? 'Generating PDF...' : '📄 Generate homework PDF'}
-              </button>
             </div>
           )}
           <div className="bg-slate-700/50 rounded-xl p-6 sm:p-7 border border-slate-600 mb-4">

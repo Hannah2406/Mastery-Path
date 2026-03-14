@@ -9,9 +9,9 @@ spring:
   application:
     name: masterypath
   datasource:
-    url: jdbc:postgresql://localhost:5433/masterypath
-    username: masterypath
-    password: masterypath
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5433/masterypath}
+    username: ${SPRING_DATASOURCE_USERNAME:masterypath}
+    password: ${SPRING_DATASOURCE_PASSWORD:masterypath}
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
@@ -31,7 +31,7 @@ spring:
       initialize-schema: always
 
 server:
-  port: 8080
+  port: ${PORT:8080}
 
 management:
   endpoints:

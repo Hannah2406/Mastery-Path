@@ -144,8 +144,8 @@ export default function PathSelector({ onSelectPath, onShowMarketplace }) {
           onClose={() => setShowAIModal(false)} 
           onPathCreated={(path) => {
             setShowAIModal(false);
-            refreshPaths();
-            onSelectPath(path);
+            refreshPaths(); // refetch list so the new path appears
+            onSelectPath(path); // switch view to this path (map with nodes)
           }}
         />
       )}

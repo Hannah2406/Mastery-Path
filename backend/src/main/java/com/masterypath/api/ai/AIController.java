@@ -41,22 +41,20 @@ public class AIController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                 .body(Map.of("error", "Not authenticated"));
         }
-        
+        if (!aiService.isAiConfigured()) {
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(Map.of("error", "AI is not configured. Add GEMINI_API_KEY or OPENAI_API_KEY to .env in the project root and restart the backend (./stop-all.sh then ./start-all.sh). Free key: https://aistudio.google.com/app/apikey"));
+        }
         try {
             List<AIService.PathNodeSuggestion> suggestions = aiService.generatePath(
                 request.getDescription(),
                 request.getDifficulty(),
                 request.getEstimatedTimeMinutes()
             );
-            
             GeneratePathResponse response = new GeneratePathResponse();
             response.setSuggestions(suggestions.stream()
-                .map(s -> {
-                    GeneratePathResponse.NodeSuggestionDTO dto = new GeneratePathResponse.NodeSuggestionDTO(s.getName(), s.getDescription(), s.getCategory());
-                    return dto;
-                })
+                .map(s -> new GeneratePathResponse.NodeSuggestionDTO(s.getName(), s.getDescription(), s.getCategory(), s.getResourceUrl(), s.getPrerequisites()))
                 .toList());
-            
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)

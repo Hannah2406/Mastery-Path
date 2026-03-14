@@ -241,11 +241,12 @@ public class MarketplaceService {
                 .orElseGet(() -> categoryRepository.save(new Category(suggestion.getCategory(), 0.03)));
 
             // Create node if it doesn't exist (by name match in category)
+            String resUrl = (suggestion.getResourceUrl() != null && !suggestion.getResourceUrl().isBlank()) ? suggestion.getResourceUrl() : null;
             Node node = nodeRepository.findByCategory_IdAndName(category.getId(), suggestion.getName())
                 .orElseGet(() -> {
-                    Node newNode = new Node(category, suggestion.getName(), 
-                        suggestion.getDescription() != null ? suggestion.getDescription() : "", 
-                        null, null);
+                    Node newNode = new Node(category, suggestion.getName(),
+                        suggestion.getDescription() != null ? suggestion.getDescription() : "",
+                        null, resUrl);
                     return nodeRepository.save(newNode);
                 });
 

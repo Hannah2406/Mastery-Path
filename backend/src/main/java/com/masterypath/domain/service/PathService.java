@@ -12,22 +12,32 @@ import java.util.stream.Collectors;
 
 @Service public class PathService {
     private static final int REVIEW_GRACE_DAYS = 7;
+    private static final int PROBLEMS_PER_NODE = 5;
     private final PathRepository pathRepository;
     private final PathNodeRepository pathNodeRepository;
     private final NodeRepository nodeRepository;
+    private final CategoryRepository categoryRepository;
     private final NodePrerequisiteRepository nodePrerequisiteRepository;
     private final UserSkillRepository userSkillRepository;
+    private final AIService aiService;
+    private final ProblemRepository problemRepository;
 
     public PathService(PathRepository pathRepository,
                        PathNodeRepository pathNodeRepository,
                        NodeRepository nodeRepository,
+                       CategoryRepository categoryRepository,
                        NodePrerequisiteRepository nodePrerequisiteRepository,
-                       UserSkillRepository userSkillRepository) {
+                       UserSkillRepository userSkillRepository,
+                       AIService aiService,
+                       ProblemRepository problemRepository) {
         this.pathRepository = pathRepository;
         this.pathNodeRepository = pathNodeRepository;
         this.nodeRepository = nodeRepository;
+        this.categoryRepository = categoryRepository;
         this.nodePrerequisiteRepository = nodePrerequisiteRepository;
         this.userSkillRepository = userSkillRepository;
+        this.aiService = aiService;
+        this.problemRepository = problemRepository;
     }
 
     public List<Path> getAllPaths(Long userId) {
@@ -48,6 +58,83 @@ import java.util.stream.Collectors;
         }
         Path path = new Path(owner, pathName, description != null ? description.trim() : null);
         return pathRepository.save(path);
+    }
+
+    /**
+     * Create a path from AI-generated node suggestions: find-or-create Category and Node for each suggestion,
+     * then add PathNodes in order. Same logic as marketplace "generate AI course" but for a user-owned path.
+     */
+    @Transactional
+    public Path createPathFromAISuggestions(User owner, String name, String description,
+                                           List<com.masterypath.api.paths.dto.CreatePathFromAIRequest.NodeSuggestionItem> suggestions) {
+        if (owner == null) {
+            throw new IllegalArgumentException("Path owner is required");
+        }
+        if (suggestions == null || suggestions.isEmpty()) {
+            throw new IllegalArgumentException("At least one node suggestion is required");
+        }
+        Path path = createPath(owner, name, description);
+        int order = 0;
+        java.util.List<Long> nodeIdsInOrder = new java.util.ArrayList<>();
+        for (var item : suggestions) {
+            String catName = item.getCategory() != null && !item.getCategory().isBlank() ? item.getCategory().trim() : "General";
+            Category category = categoryRepository.findByName(catName)
+                .orElseGet(() -> categoryRepository.save(new Category(catName, 0.03)));
+            String nodeName = item.getName() != null && !item.getName().isBlank() ? item.getName().trim() : ("Unit " + (order + 1));
+            String nodeDesc = item.getDescription() != null ? item.getDescription().trim() : "";
+            Node node = nodeRepository.findByCategory_IdAndName(category.getId(), nodeName)
+                .orElseGet(() -> {
+                    Node n = new Node(category, nodeName, nodeDesc, null, null);
+                    return nodeRepository.save(n);
+                });
+            pathNodeRepository.save(new PathNode(path.getId(), node.getId(), order));
+            nodeIdsInOrder.add(node.getId());
+            order++;
+        }
+        // Prerequisites: use per-node prerequisites for DAG (same-level/branching), else linear chain. Dedupe edges.
+        Set<String> edgesAdded = new HashSet<>();
+        for (int i = 0; i < suggestions.size() && i < nodeIdsInOrder.size(); i++) {
+            var item = suggestions.get(i);
+            List<Integer> prereqIndices = item.getPrerequisites();
+            if (prereqIndices != null && !prereqIndices.isEmpty()) {
+                for (Integer j : prereqIndices) {
+                    if (j != null && j >= 0 && j < nodeIdsInOrder.size()) {
+                        Long prereqId = nodeIdsInOrder.get(j);
+                        Long dependentId = nodeIdsInOrder.get(i);
+                        if (edgesAdded.add(prereqId + "," + dependentId)) {
+                            nodePrerequisiteRepository.save(new NodePrerequisite(prereqId, dependentId));
+                        }
+                    }
+                }
+            } else if (i > 0) {
+                Long prereqId = nodeIdsInOrder.get(i - 1);
+                Long dependentId = nodeIdsInOrder.get(i);
+                if (edgesAdded.add(prereqId + "," + dependentId)) {
+                    nodePrerequisiteRepository.save(new NodePrerequisite(prereqId, dependentId));
+                }
+            }
+        }
+        // Generate fitting practice problems for each unit (AMC8/Blind75-style structure; content from path topic)
+        if (aiService.isAiConfigured()) {
+            String pathName = path.getName();
+            boolean hardPath = pathName != null && pathName.matches("(?i).*(AMC|competition|math).*");
+            String difficulty = hardPath ? "hard" : "intermediate";
+            for (Long nodeId : nodeIdsInOrder) {
+                nodeRepository.findById(nodeId).ifPresent(node -> {
+                    String topic = node.getName() + (node.getDescription() != null && !node.getDescription().isBlank() ? " " + node.getDescription() : "");
+                    try {
+                        List<AIService.QuestionSuggestion> questions = aiService.generateQuestions(topic, difficulty, PROBLEMS_PER_NODE, pathName);
+                        for (AIService.QuestionSuggestion q : questions) {
+                            Problem p = new Problem(node, q.getProblemText(), q.getSolutionText(), q.getDifficulty());
+                            problemRepository.save(p);
+                        }
+                    } catch (Exception ignored) {
+                        // Skip this node; path still created, node just has no problems
+                    }
+                });
+            }
+        }
+        return path;
     }
 
     /** Create starter paths for a new user (Blind 75 and AMC8 with basic nodes). */

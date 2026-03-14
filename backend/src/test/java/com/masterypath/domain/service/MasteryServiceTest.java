@@ -54,6 +54,7 @@ public class MasteryServiceTest {
 
     private void setupCommonMocks() {
         when(nodeRepository.findById(1L)).thenReturn(Optional.of(testNode));
+        when(unlockEngine.canUserPractice(any(User.class), anyLong())).thenReturn(true);
         when(performanceLogRepository.countByUserIdAndNodeId(anyLong(), anyLong())).thenReturn(0);
         when(performanceLogRepository.save(any())).thenAnswer(inv -> {
             PerformanceLog log = inv.getArgument(0);
